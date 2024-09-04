@@ -1,0 +1,31 @@
+from pathlib import Path
+from typing import Literal
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_PATH = Path(__file__).parent.parent.resolve()
+BASE_DATA_PATH = PROJECT_PATH / "data"
+MISC_PATH = BASE_DATA_PATH / "misc"
+CLIENTS_TASKS_PATH = BASE_DATA_PATH / "clients_tasks"
+PROCESSED_TASKS_PATH = BASE_DATA_PATH / "processed_tasks"
+
+LOG_CONFIG_FILE = BASE_DATA_PATH / "logging.json"
+ENV_FILE_PATH = (PROJECT_PATH / ".env").absolute().as_posix()
+
+MAIN_DIRS = [BASE_DATA_PATH, CLIENTS_TASKS_PATH, PROCESSED_TASKS_PATH, MISC_PATH]
+
+
+class Big5Config(BaseSettings):
+    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
+
+    db_type: Literal["sqlite"] = Field(alias="DB_TYPE", default="sqlite")
+    moved_processed_tasks: bool = True
+    reset_db: bool = Field(alias="RESET_DB", default=False)
+
+
+BIG5_CONFIG = Big5Config()
+
+PLATFORM_TWITTER = "twitter"
+POST_TYPE_REGULAR = "regular_post"
+

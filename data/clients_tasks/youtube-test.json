@@ -1,0 +1,8 @@
+{
+  "platform": "youtube",
+  "task_name": "test",
+  "base_collection_config": {
+     "query": ""
+  },
+  "collection_steps": []
+}

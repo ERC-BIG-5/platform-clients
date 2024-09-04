@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CrawlerTaskConfig",
+  "type": "object",
+  "properties": {
+    "platform": {
+      "type": "string",
+      "enum": ["youtube", "twitter"]
+    },
+    "task_name": {
+      "type": "string"
+    },
+    "base_collection_config": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "default": 100
+        },
+        "from_time": {
+          "type": "string"
+        },
+        "to_time": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "location_base": {
+          "type": "string"
+        },
+        "location_mod": {
+          "type": "string"
+        },
+        "extra": {
+          "type": "object"
+        }
+      },
+      "required": ["query"]
+    },
+    "collection_steps": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": []
+    },
+    "auth_config": {
+      "type": "object"
+    }
+  },
+  "required": ["platform", "task_name", "base_collection_config"]
+}
