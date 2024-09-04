@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -13,10 +13,12 @@ class CollectConfig(BaseModel):
     location_mod: Optional[str] = None
     extra: Optional[dict] = None
 
+class CollectionStepConfig(CollectConfig):
+    query: Optional[str] = None
 
 class ClientTaskConfig(BaseModel):
-    platform: str
     task_name: str
+    platform: str
     base_collection_config: CollectConfig
-    collection_steps: Optional[list[dict]] = Field(default_factory=list)
+    collection_steps: Optional[list[CollectionStepConfig]] = Field(default_factory=list)
     auth_config: Optional[dict] = None
