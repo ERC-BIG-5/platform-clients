@@ -89,6 +89,8 @@ if BIG5_CONFIG.db_type == "postgres":
     """
     async_session: async_sessionmaker[AsyncSession] = async_sessionmaker()
 else:
+    # async_engine = create_async_engine(f'sqlite:///{sqlite_db_path().as_posix()}')
+    # async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(async_engine)
     engine = sqlite_engine()
     Session = sessionmaker(engine)
 
