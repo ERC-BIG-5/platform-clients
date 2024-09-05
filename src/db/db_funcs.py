@@ -4,7 +4,7 @@ from typing import Optional, Sequence
 from sqlalchemy import select, exists
 
 from src.clients.clients_models import ClientTaskConfig
-from src.db.db_models import DBPost, CollectionTask, CollectionStatus
+from src.db.db_models import DBPost, DBCollectionTask, CollectionStatus
 from src.db.db_session import Session
 from src.misc.project_logging import get_b5_logger
 
@@ -13,7 +13,7 @@ logger = get_b5_logger(__file__)
 
 def check_task_name_exists(task_name: str) -> bool:
     with Session() as session:
-        stmt = exists().where(CollectionTask.task_name == task_name)
+        stmt = exists().where(DBCollectionTask.task_name == task_name)
         result = session.query(stmt).scalar()
         return bool(result)
 
@@ -24,14 +24,11 @@ def add_db_collection_task(collection_task: ClientTaskConfig) -> bool:
         logger.debug(f"client collection task exists already: {task_name}")
         return False
     with Session() as session:
-        task = CollectionTask(
+        task = DBCollectionTask(
             task_name=task_name,
             platform=collection_task.platform,
-            config_data={
-                "base_collection_config": collection_task.base_collection_config.model_dump(),
-                "collection_steps": [s.model_dump() for s in collection_task.collection_steps],
-            },
-            total_steps=len(collection_task.collection_steps)
+            collection_config= collection_task.model_dump()["collection_config"],
+            total_steps=len(collection_task.collection_config)
         )
         session.add(task)
         session.commit()
@@ -63,12 +60,12 @@ def get_posts(platform: str,
         return result.scalars().all()
 
 
-def get_task_queue(platforms: Optional[Sequence[str]] = None) -> list[CollectionTask]:
+def get_task_queue(platforms: Optional[Sequence[str]] = None) -> list[DBCollectionTask]:
     queueable_statuses = [CollectionStatus.INIT,CollectionStatus.ACTIVE]
 
-    query = select(CollectionTask).where(CollectionTask.status.in_(queueable_statuses))
+    query = select(DBCollectionTask).where(DBCollectionTask.status.in_(queueable_statuses))
     if platforms is not None:
-        query = query.where(CollectionTask.platform.in_(list(platforms)))
+        query = query.where(DBCollectionTask.platform.in_(list(platforms)))
 
 
     with Session() as session:

@@ -20,7 +20,7 @@ class Big5Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
 
     db_type: Literal["sqlite"] = Field(alias="DB_TYPE", default="sqlite")
-    moved_processed_tasks: bool = True
+    moved_processed_tasks: bool = Field(alias="MOVE_PROCESSED_TASKS", default=True)
     reset_db: bool = Field(alias="RESET_DB", default=False)
 
 

@@ -5,43 +5,15 @@
   "properties": {
     "platform": {
       "type": "string",
-      "enum": ["youtube", "twitter"]
+      "enum": [
+        "youtube",
+        "twitter"
+      ]
     },
     "task_name": {
       "type": "string"
     },
-    "base_collection_config": {
-      "type": "object",
-      "properties": {
-        "query": {
-          "type": "string"
-        },
-        "limit": {
-          "type": "integer",
-          "default": 100
-        },
-        "from_time": {
-          "type": "string"
-        },
-        "to_time": {
-          "type": "string"
-        },
-        "language": {
-          "type": "string"
-        },
-        "location_base": {
-          "type": "string"
-        },
-        "location_mod": {
-          "type": "string"
-        },
-        "extra": {
-          "type": "object"
-        }
-      },
-      "required": ["query"]
-    },
-    "collection_steps": {
+    "collection_config": {
       "type": "array",
       "items": {
         "type": "object"
@@ -52,5 +24,9 @@
       "type": "object"
     }
   },
-  "required": ["platform", "task_name", "base_collection_config"]
+  "required": [
+    "platform",
+    "task_name",
+    "collection_config"
+  ]
 }

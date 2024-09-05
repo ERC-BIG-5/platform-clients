@@ -1,6 +1,17 @@
+from datetime import datetime
+from enum import Enum as PyEnum, auto
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+
+class CollectionStatus(PyEnum):
+    INIT = auto()
+    ACTIVE = auto()  # started, but not currently running
+    RUNNING = auto()  # started and currently running
+    PAUSED = auto()  # if it's set to pause
+    ABORTED = auto()  # started and aborted
+    DONE = auto()  # started and finished
 
 
 class CollectConfig(BaseModel):
@@ -13,12 +24,16 @@ class CollectConfig(BaseModel):
     location_mod: Optional[str] = None
     extra: Optional[dict] = None
 
+
 class CollectionStepConfig(CollectConfig):
     query: Optional[str] = None
+
 
 class ClientTaskConfig(BaseModel):
     task_name: str
     platform: str
-    base_collection_config: CollectConfig
-    collection_steps: Optional[list[CollectionStepConfig]] = Field(default_factory=list)
-    auth_config: Optional[dict] = None
+    collection_config: list[CollectionStepConfig]
+    auth_config: Optional[dict[str, str]] = None
+    model_config = {'from_attributes': True}
+    status: CollectionStatus = CollectionStatus.INIT
+    time_added: Optional[datetime] = None

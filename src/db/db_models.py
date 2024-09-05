@@ -1,10 +1,12 @@
 from datetime import datetime
-from enum import Enum as PyEnum, auto
+
 
 from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Integer, Enum, func
 # from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+
+from src.clients.clients_models import CollectionStatus
 
 Base = declarative_base()
 
@@ -41,21 +43,12 @@ class DBComment(Base):
     post: Mapped["DBPost"] = relationship(back_populates="comments")
 
 
-class CollectionStatus(PyEnum):
-    INIT = auto()
-    ACTIVE = auto()  # started, but not currently running
-    RUNNING = auto()  # started and currently running
-    PAUSED = auto() # if its set to pause
-    ABORTED = auto()  # started and aborted
-    DONE = auto()  # started and finished
-
-
-class CollectionTask(Base):
+class DBCollectionTask(Base):
     __tablename__ = 'collection_task'
     id: Mapped[int] = mapped_column(primary_key=True)
     task_name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
-    config_data: Mapped[dict] = mapped_column(JSON, nullable=False)
     platform: Mapped[str] = mapped_column(String(20), nullable=False)
+    collection_config: Mapped[dict] = mapped_column(JSON, nullable=False)
     total_steps: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(Enum(CollectionStatus), nullable=False, default=CollectionStatus.INIT)
     time_added: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

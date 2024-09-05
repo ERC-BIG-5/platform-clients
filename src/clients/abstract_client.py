@@ -6,7 +6,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
-from src.clients.clients_models import CollectConfig
+from src.clients.clients_models import CollectConfig, ClientTaskConfig
 from src.db.db_models import DBPost, DBUser
 
 ClientConfig = TypeVar("ClientConfig", bound=BaseModel)
@@ -29,6 +29,9 @@ class AbstractClient[ClientConfig, PostEntry](ABC):
 
     @abstractmethod
     def transform_config(self, abstract_config: CollectConfig) -> ClientConfig:
+        pass
+
+    def continue_task(self, task: ClientTaskConfig):
         pass
 
     @abstractmethod

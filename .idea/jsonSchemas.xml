@@ -9,6 +9,7 @@
               <option name="generatedName" value="New Schema" />
               <option name="name" value="client_collection_config" />
               <option name="relativePathToSchema" value="data/schema/client_config.schema.json" />
+              <option name="schemaVersion" value="JSON Schema version 7" />
               <option name="patterns">
                 <list>
                   <Item>
