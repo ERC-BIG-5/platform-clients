@@ -18,6 +18,7 @@ class AbstractClient[ClientConfig, PostEntry](ABC):
 
     def __init__(self, config: dict | BaseModel | BaseSettings):
         self.config = config
+        self._task_queue: list[ClientTaskConfig] = []
         if inspect.iscoroutinefunction(self.setup):
             asyncio.run(self.setup())
         else:
@@ -31,7 +32,11 @@ class AbstractClient[ClientConfig, PostEntry](ABC):
     def transform_config(self, abstract_config: CollectConfig) -> ClientConfig:
         pass
 
-    def continue_task(self, task: ClientTaskConfig):
+    def add_tasks(self, task_queue: list[ClientTaskConfig]):
+        self._task_queue.extend(task_queue)
+
+    @abstractmethod
+    def continue_tasks(self):
         pass
 
     @abstractmethod
@@ -39,7 +44,7 @@ class AbstractClient[ClientConfig, PostEntry](ABC):
         pass
 
     @abstractmethod
-    def create_post_entry(self, post: PostEntry) -> DBPost:
+    def create_post_entry(self, post: PostEntry, task: ClientTaskConfig) -> DBPost:
         pass
 
     @abstractmethod

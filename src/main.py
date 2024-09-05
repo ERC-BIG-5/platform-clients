@@ -8,7 +8,7 @@ from src.misc.files import init_folders
 if __name__ == '__main__':
     init_folders()
     init_db()
-    check_new_client_tasks()
+    # check_new_client_tasks()
     progress_tasks()
 
     # with Session() as session:
@@ -23,4 +23,3 @@ if __name__ == '__main__':
     #     session.add(user)
     #     session.commit()
 
-    print(get_posts("twitter"))

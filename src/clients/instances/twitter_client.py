@@ -4,7 +4,7 @@ from pydantic import SecretStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from twscrape import API, gather, User
 
-from src.const import PLATFORM_TWITTER, POST_TYPE_REGULAR, MISC_PATH
+from src.const import PLATFORM_TWITTER, MISC_PATH, PostType
 from src.clients.abstract_client import AbstractClient, CollectConfig
 from src.db.db_models import DBUser, DBPost
 from src.misc.project_logging import get_b5_logger
@@ -66,7 +66,7 @@ class TwitterClient[Tweet](AbstractClient):
             post_url=post.url,
             date_created=post.date,
             date_collected=datetime.now(),
-            post_type=POST_TYPE_REGULAR,
+            post_type=PostType.REGULAR,
             content=post.json(),
             collection_method_id="test"
         )

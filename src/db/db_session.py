@@ -1,5 +1,6 @@
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 from sqlalchemy import create_engine, Engine, event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -106,6 +107,31 @@ def init_db():
     # ...
     elif BIG5_CONFIG.db_type == "postgres":
         create_postgres_db("big5", True)
+
+class DBSessionManager:
+    def __init__(self, session_maker: sessionmaker):
+        self.session_maker = session_maker
+        self.session: Optional[Session] = None
+
+    @contextmanager
+    def session_scope(self):
+        """Provide a transactional scope around a series of operations."""
+        if self.session is None:
+            session = self.session_maker()
+            self.session = session
+            try:
+                yield session
+                session.commit()
+            except:
+                session.rollback()
+                raise
+            finally:
+                session.close()
+                self.session = None
+        else:
+            yield self.session
+
+db_manager = DBSessionManager(Session)
 
 if __name__ == "__main__":
     init_db()

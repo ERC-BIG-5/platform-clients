@@ -1,39 +1,64 @@
 from datetime import datetime
-from enum import Enum as PyEnum, auto
 from typing import Optional
 
 from pydantic import BaseModel
 
-
-class CollectionStatus(PyEnum):
-    INIT = auto()
-    ACTIVE = auto()  # started, but not currently running
-    RUNNING = auto()  # started and currently running
-    PAUSED = auto()  # if it's set to pause
-    ABORTED = auto()  # started and aborted
-    DONE = auto()  # started and finished
+from src.const import CollectionStatus
+from src.db import db_funcs
+from src.db.db_session import Session
 
 
 class CollectConfig(BaseModel):
-    query: str
-    limit: Optional[int] = 100
+    model_config = {'extra': "allow"}
+    query: Optional[str] = None
+    limit: Optional[int] = None
     from_time: Optional[str] = None
     to_time: Optional[str] = None
     language: Optional[str] = None
     location_base: Optional[str] = None
     location_mod: Optional[str] = None
-    extra: Optional[dict] = None
-
-
-class CollectionStepConfig(CollectConfig):
-    query: Optional[str] = None
 
 
 class ClientTaskConfig(BaseModel):
+    id: Optional[int] = None
     task_name: str
     platform: str
-    collection_config: list[CollectionStepConfig]
+    collection_config: list[CollectConfig]
     auth_config: Optional[dict[str, str]] = None
-    model_config = {'from_attributes': True}
+
     status: CollectionStatus = CollectionStatus.INIT
     time_added: Optional[datetime] = None
+    steps_done: Optional[int] = -1
+    #
+    current_step_config: Optional[CollectConfig] = None
+
+    @property
+    def next_task_idx(self):
+        return self.steps_done + 1
+
+    def update_current_config(self):
+        if not self.current_step_config:
+            self.current_step_config = CollectConfig()
+        for step in range(self.next_task_idx + 1):
+            fields = self.collection_config[step].model_dump(exclude_unset=True, exclude_defaults=True)
+            for k, v in fields.items():
+                setattr(self.current_step_config, k, v)
+
+    def next(self):
+        with Session() as session:
+            db_obj = db_funcs.get_task(self.id)
+            db_obj.steps_done += 1
+            session.add(db_obj)
+            session.commit()
+        self.steps_done += 1
+
+    def __len__(self):
+        return len(self.collection_config)
+
+    def has_more(self) -> bool:
+        """
+        check, if there are more steps to do.
+        +1, because, steps_done=0, means we did, the first step.
+        :return:
+        """
+        return (self.steps_done + 1) < len(self)

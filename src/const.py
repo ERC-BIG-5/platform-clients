@@ -1,3 +1,4 @@
+from enum import Enum, auto
 from pathlib import Path
 from typing import Literal
 
@@ -27,5 +28,16 @@ class Big5Config(BaseSettings):
 BIG5_CONFIG = Big5Config()
 
 PLATFORM_TWITTER = "twitter"
-POST_TYPE_REGULAR = "regular_post"
 
+
+
+class CollectionStatus(Enum):
+    INIT = auto()
+    ACTIVE = auto()  # started, but not currently running
+    RUNNING = auto()  # started and currently running
+    PAUSED = auto()  # if it's set to pause
+    ABORTED = auto()  # started and aborted
+    DONE = auto()  # started and finished
+
+class PostType(Enum):
+    REGULAR = auto()

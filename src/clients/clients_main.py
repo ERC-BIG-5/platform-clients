@@ -29,9 +29,11 @@ def get_platform_client(platform_name: str, auth_config: dict[str,str]) -> Abstr
 
 def progress_tasks():
     platform_grouped = get_platforms_task_queue()
-    for platform_name,platform_tasks in platform_grouped.items():
-        task = ClientTaskConfig.model_validate(platform_tasks[0])
-        client = get_platform_client(platform_name, task.auth_config)
-        client.continue_task(task)
-
+    for platform_name, platform_tasks in platform_grouped.items():
+        # this is just adding one att a time
+        tasks = [ClientTaskConfig.model_validate(db_task, from_attributes=True)
+                 for db_task in platform_tasks]
+        client = get_platform_client(platform_name, tasks[0].auth_config)
+        client.add_tasks(tasks)
+        client.continue_tasks()
 
