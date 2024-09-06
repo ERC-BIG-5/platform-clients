@@ -1,34 +1,67 @@
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Type, Sequence
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
 from src.clients.abstract_client import AbstractClient
-from src.clients.client_task import get_platforms_task_queue
 from src.clients.clients_models import ClientTaskConfig
 from src.clients.instances.twitter_client import TwitterClient
 from src.clients.instances.youtube_client import YoutubeClient
+from src.const import PLATFORMS, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH
+from src.db import db_funcs
+from src.db.db_models import DBCollectionTask
+from src.misc.files import get_abs_path, read_data
+from src.misc.project_logging import get_b5_logger
 
-client_classes = {
+logger = get_b5_logger(__file__)
+
+client_classes: dict[str, Type[AbstractClient]] = {
     "twitter": TwitterClient,
     "youtube": YoutubeClient
 }
 
+"""
+Loaded clients
+"""
 clients: dict[str, AbstractClient] = {}
 
-def setup_platform(platform_name: str, config: Optional[dict | BaseModel | BaseSettings] = None) -> AbstractClient:
+
+def setup_client(platform_name: PLATFORMS,
+                 config: Optional[dict | BaseModel | BaseSettings] = None) -> AbstractClient:
+    """
+    Initiate and set up a client for a specific platform
+    :param platform_name: name of the platform
+    :param config: config for credentials and so on
+    :return: a client object
+    """
     client = client_classes[platform_name](config)
     clients[platform_name] = client
     return client
 
-def get_platform_client(platform_name: str, auth_config: dict[str,str]) -> AbstractClient:
+
+def get_platform_client(platform_name: PLATFORMS, config: dict[str, str]) -> AbstractClient:
+    """
+    Get existing client or create a new one
+    :param platform_name:
+    :param config:
+    :return:
+    """
     if platform_name in clients:
         return clients[platform_name]
     else:
-        return setup_platform(platform_name, auth_config)
+        return setup_client(platform_name, config)
 
-def progress_tasks():
-    platform_grouped = get_platforms_task_queue()
+
+def progress_tasks(platforms: list[str] = None) -> None:
+    """
+    Progress all tasks specific (or all) clients
+    :param platforms: Select the clients (or leave None for all)
+    TODO, this is synchronously, which we dont want in the end
+    :return:
+    """
+    logger.debug("progressing client tasks")
+    platform_grouped = get_platforms_task_queues(platforms)
     for platform_name, platform_tasks in platform_grouped.items():
         # this is just adding one att a time
         tasks = [ClientTaskConfig.model_validate(db_task, from_attributes=True)
@@ -37,3 +70,41 @@ def progress_tasks():
         client.add_tasks(tasks)
         client.continue_tasks()
 
+
+def load_task(task_path: Path) -> ClientTaskConfig:
+    """
+    Load an validate a task file
+    :param task_path: absolute or relative path (to CLIENTS_TASKS_PATH)
+    :return: task object
+    """
+    abs_task_path = get_abs_path(task_path, CLIENTS_TASKS_PATH)
+    return ClientTaskConfig.model_validate(read_data(abs_task_path))
+
+
+def check_new_client_tasks() -> list[str]:
+    """
+    check for json file in the specific folder and add them into the sdb
+    :return: returns a list of task names
+    """
+    added_task = []
+    for file in CLIENTS_TASKS_PATH.glob("*.json"):
+        task = load_task(file)
+        processed = db_funcs.add_db_collection_task(task)
+        if processed and BIG5_CONFIG.moved_processed_tasks:
+            file.rename(PROCESSED_TASKS_PATH / file.name)
+            added_task.append(task.task_name)
+    return added_task
+
+
+def get_platforms_task_queues(platforms: Optional[Sequence[str]] = None) -> dict[str, list[DBCollectionTask]]:
+    """
+    Get for all given platforms all tasks
+    todo: dont use the db model class...
+    :param platforms:
+    :return: a dict {platform_name: list[task]}
+    """
+    tasks = db_funcs.get_task_queue(platforms)
+    platform_grouped: dict[str, list[DBCollectionTask]] = {}
+    for task in tasks:
+        platform_grouped.setdefault(task.platform, []).append(task)
+    return platform_grouped

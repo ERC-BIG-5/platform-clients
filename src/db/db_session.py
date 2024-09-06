@@ -49,7 +49,7 @@ def create_sqlite_db():
     """
     Create the SQLite database and tables based on the defined models.
     """
-    logger.debug("create_sqlite_db")
+
     engine = sqlite_engine()
 
     def _fk_pragma_on_connect(dbapi_con, con_record):
@@ -59,6 +59,7 @@ def create_sqlite_db():
 
     # Create the database if it doesn't exist
     if not database_exists(engine.url):
+        logger.debug("create_sqlite_db")
         create_database(engine.url)
         # TODO test, which of those is needed?
         # Create all tables in the database

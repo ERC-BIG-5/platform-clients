@@ -27,8 +27,10 @@ class Big5Config(BaseSettings):
 
 BIG5_CONFIG = Big5Config()
 
-PLATFORM_TWITTER = "twitter"
+PLATFORM_TWITTER = Literal["twitter"]
+PLATFORM_YOUTUBE = Literal["youtube"]
 
+PLATFORMS =  PLATFORM_TWITTER | PLATFORM_YOUTUBE
 
 
 class CollectionStatus(Enum):

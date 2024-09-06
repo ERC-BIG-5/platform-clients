@@ -76,7 +76,7 @@ def get_posts(platform: str,
 
 
 def get_task_queue(platforms: Optional[Sequence[str]] = None) -> list[DBCollectionTask]:
-    queueable_statuses = [CollectionStatus.INIT, CollectionStatus.ACTIVE]
+    queueable_statuses = [CollectionStatus.INIT, CollectionStatus.ACTIVE, CollectionStatus.PAUSED]
 
     query = select(DBCollectionTask).where(DBCollectionTask.status.in_(queueable_statuses))
     if platforms is not None:

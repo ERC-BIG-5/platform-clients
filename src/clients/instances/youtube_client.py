@@ -1,5 +1,6 @@
 from asyncio import get_event_loop
 from datetime import datetime
+from time import sleep
 from typing import Optional, Literal
 
 import pyrfc3339
@@ -38,9 +39,11 @@ class YoutubeSearchParameters(BaseModel):
 
 
 type TVYoutubeSearchParameters = YoutubeSearchParameters
+type PostDict = dict
+type UserDict = dict
 
 
-class YoutubeClient[TVYoutubeSearchParameters, dict](AbstractClient):
+class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClient):
 
     def __init__(self, config):
         super().__init__(config)
@@ -60,7 +63,7 @@ class YoutubeClient[TVYoutubeSearchParameters, dict](AbstractClient):
         while self._task_queue:
             task: ClientTaskConfig = self._task_queue.pop()
             finished = self.continue_task(task)
-         # log when they dont all finish
+        # log when they dont all finish
         logger.info(f"{self.platform_name} all tasks finished")
 
     def continue_task(self, task: ClientTaskConfig) -> bool:
@@ -74,6 +77,7 @@ class YoutubeClient[TVYoutubeSearchParameters, dict](AbstractClient):
         while task.has_more():
             task.update_current_config()
             yt_config = self.transform_config(task.current_step_config)
+            logger.debug(f"Getting data: {repr(task)}")
             result = get_event_loop().run_until_complete(self.collect(yt_config))
             if result is None:
                 # raise ValueError("Could not fetch data")
@@ -82,6 +86,7 @@ class YoutubeClient[TVYoutubeSearchParameters, dict](AbstractClient):
             posts: list[DBPost] = [self.create_post_entry(post, task) for post in result]
             submit_posts(posts)
             task.next()
+            sleep(5)  # todo parameter
         db_funcs.set_task_status(task.id, CollectionStatus.DONE)
         logger.info(f"{self.platform_name} task '{task.task_name}' finished")
         return True
@@ -105,7 +110,7 @@ class YoutubeClient[TVYoutubeSearchParameters, dict](AbstractClient):
                         k: search_item[k] for k in ["id", "snippet"]
                     } | {
                         k: details_item.get(k) for k in
-                        ["contentDetails","status", "statistics", "topicDetails", "localizations"]
+                        ["contentDetails", "status", "statistics", "topicDetails", "localizations"]
                     }
                 videos.append(v)
             return videos

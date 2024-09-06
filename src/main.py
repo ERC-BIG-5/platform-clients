@@ -1,6 +1,4 @@
-from src.clients.client_task import check_new_client_tasks
 from src.clients.clients_main import progress_tasks
-from src.db.db_funcs import get_posts
 from src.db.db_session import init_db
 from src.misc.files import init_folders
 

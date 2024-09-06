@@ -20,6 +20,7 @@ class CollectConfig(BaseModel):
 
 
 class ClientTaskConfig(BaseModel):
+    model_config = {'extra': "allow"}
     id: Optional[int] = None
     task_name: str
     platform: str
@@ -62,3 +63,6 @@ class ClientTaskConfig(BaseModel):
         :return:
         """
         return (self.steps_done + 1) < len(self)
+
+    def __repr__(self):
+        return f"Collection-Task: {self.task_name} ({self.platform})"
