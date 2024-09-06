@@ -5,19 +5,18 @@ from datetime import datetime
 from typing import TypeVar
 
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings
 
-from src.clients.clients_models import CollectConfig, ClientTaskConfig
+from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
 from src.db.db_models import DBPost, DBUser
 
-ClientConfig = TypeVar("ClientConfig", bound=BaseModel)
+TClientConfig = TypeVar("TClientConfig", bound=BaseModel)
 PostEntry = TypeVar("PostEntry")
 UserEntry = TypeVar("UserEntry")
 
 
-class AbstractClient[ClientConfig, PostEntry, UserEntry](ABC):
+class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
 
-    def __init__(self, config: dict | BaseModel | BaseSettings):
+    def __init__(self, config: ClientConfig):
         self.config = config
         self._task_queue: list[ClientTaskConfig] = []
         if inspect.iscoroutinefunction(self.setup):
@@ -34,7 +33,7 @@ class AbstractClient[ClientConfig, PostEntry, UserEntry](ABC):
         pass
 
     @abstractmethod
-    def transform_config(self, abstract_config: CollectConfig) -> ClientConfig:
+    def transform_config(self, abstract_config: CollectConfig) -> TClientConfig:
         """
         transform the generic configuration into a platform specific configuration
         :param abstract_config:

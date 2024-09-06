@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
 from src.clients.abstract_client import AbstractClient
-from src.clients.clients_models import ClientTaskConfig
+from src.clients.clients_models import ClientTaskConfig, ClientConfig
 from src.clients.instances.twitter_client import TwitterClient
 from src.clients.instances.youtube_client import YoutubeClient
 from src.const import PLATFORMS, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH
@@ -28,7 +28,7 @@ clients: dict[str, AbstractClient] = {}
 
 
 def setup_client(platform_name: PLATFORMS,
-                 config: Optional[dict | BaseModel | BaseSettings] = None) -> AbstractClient:
+                 config: Optional[ClientConfig] = None) -> AbstractClient:
     """
     Initiate and set up a client for a specific platform
     :param platform_name: name of the platform
@@ -40,7 +40,7 @@ def setup_client(platform_name: PLATFORMS,
     return client
 
 
-def get_platform_client(platform_name: PLATFORMS, config: dict[str, str]) -> AbstractClient:
+def get_platform_client(platform_name: PLATFORMS, config: ClientConfig) -> AbstractClient:
     """
     Get existing client or create a new one
     :param platform_name:
@@ -66,7 +66,7 @@ def progress_tasks(platforms: list[str] = None) -> None:
         # this is just adding one att a time
         tasks = [ClientTaskConfig.model_validate(db_task, from_attributes=True)
                  for db_task in platform_tasks]
-        client = get_platform_client(platform_name, tasks[0].auth_config)
+        client = get_platform_client(platform_name, tasks[0].clientConfig)
         client.add_tasks(tasks)
         client.continue_tasks()
 

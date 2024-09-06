@@ -1,23 +1,22 @@
-from src.clients.clients_main import progress_tasks
+from src.clients.clients_main import check_new_client_tasks, get_platform_client
+from src.clients.clients_models import ClientConfig
 from src.db.db_session import init_db
 from src.misc.files import init_folders
 
 
-if __name__ == '__main__':
+def main():
     init_folders()
     init_db()
-    # check_new_client_tasks()
-    progress_tasks()
+    check_new_client_tasks()
+    # progress_tasks()
+    # test:
+    yt = get_platform_client("youtube",
+                             ClientConfig.model_validate({"auth_config": {
+                                 "GOOGLE_API_KEY": "ALT_GOOGLE_API_KEY"
+                             }
+                             }))
+    print(yt)
 
-    # with Session() as session:
-    #     user = DBPost(platform="twitter",
-    #                   post_type="post",
-    #                   # user_id=1,
-    #                   # content_schema_id=2,
-    #                   date_created=datetime.now(),
-    #                   date_collected=datetime.now(),
-    #                   # collection_task_name="1",
-    #                   collection_step=0)
-    #     session.add(user)
-    #     session.commit()
 
+if __name__ == '__main__':
+    main()

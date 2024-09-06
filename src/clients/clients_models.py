@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.const import CollectionStatus
+from src.const import CollectionStatus, ENV_FILE_PATH
 from src.db import db_funcs
 from src.db.db_session import Session
 
@@ -18,6 +19,9 @@ class CollectConfig(BaseModel):
     location_base: Optional[str] = None
     location_mod: Optional[str] = None
 
+class ClientConfig(BaseModel):
+    model_config = {'extra': "allow"}
+    auth_config: Optional[dict[str, str]] = None
 
 class ClientTaskConfig(BaseModel):
     model_config = {'extra': "allow"}
@@ -25,8 +29,7 @@ class ClientTaskConfig(BaseModel):
     task_name: str
     platform: str
     collection_config: list[CollectConfig]
-    auth_config: Optional[dict[str, str]] = None
-
+    client_config: Optional[ClientConfig] = None
     status: CollectionStatus = CollectionStatus.INIT
     time_added: Optional[datetime] = None
     steps_done: Optional[int] = -1
@@ -66,3 +69,10 @@ class ClientTaskConfig(BaseModel):
 
     def __repr__(self):
         return f"Collection-Task: {self.task_name} ({self.platform})"
+
+
+class BaseEnvSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH,
+                                      case_sensitive=True,
+                                      env_file_encoding='utf-8',
+                                      extra='allow')

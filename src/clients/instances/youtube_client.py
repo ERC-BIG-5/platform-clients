@@ -1,3 +1,4 @@
+import os
 from asyncio import get_event_loop
 from datetime import datetime
 from time import sleep
@@ -11,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.const import ENV_FILE_PATH, PostType, CollectionStatus
 from src.clients.abstract_client import AbstractClient, UserEntry, PostEntry
-from src.clients.clients_models import CollectConfig, ClientTaskConfig
+from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings
 from src.db import db_funcs
 from src.db.db_funcs import submit_posts
 from src.db.db_models import DBUser, DBPost
@@ -50,9 +51,14 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         self.client: Resource
 
     def setup(self):
-        if self.config:
-            print(self.config)
-        API_KEY = GoogleAPIKeySetting().GOOGLE_API_KEY.get_secret_value()
+        if self.config and self.config.auth_config:
+            ## todo generalize this and move it somewhere else
+            env = BaseEnvSettings()
+            settings = GoogleAPIKeySetting.model_validate({k: env.model_extra[v]
+                                                           for k, v in self.config.auth_config.items()})
+        else:
+            settings = GoogleAPIKeySetting()
+        API_KEY = settings.GOOGLE_API_KEY.get_secret_value()
         self.client = build('youtube', 'v3', developerKey=API_KEY)
 
     def transform_config(self, abstract_config: CollectConfig) -> YoutubeSearchParameters:
