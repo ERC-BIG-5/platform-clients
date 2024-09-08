@@ -66,7 +66,7 @@ def progress_tasks(platforms: list[str] = None) -> None:
         # this is just adding one att a time
         tasks = [ClientTaskConfig.model_validate(db_task, from_attributes=True)
                  for db_task in platform_tasks]
-        client = get_platform_client(platform_name, tasks[0].clientConfig)
+        client = get_platform_client(platform_name, tasks[0].client_config)
         client.add_tasks(tasks)
         client.continue_tasks()
 

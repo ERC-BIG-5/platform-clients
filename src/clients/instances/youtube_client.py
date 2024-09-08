@@ -12,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.const import ENV_FILE_PATH, PostType, CollectionStatus
 from src.clients.abstract_client import AbstractClient, UserEntry, PostEntry
-from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings
+from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings, ClientConfig
 from src.db import db_funcs
 from src.db.db_funcs import submit_posts
 from src.db.db_models import DBUser, DBPost
@@ -46,9 +46,10 @@ type UserDict = dict
 
 class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClient):
 
-    def __init__(self, config):
+    def __init__(self, config: ClientConfig):
         super().__init__(config)
         self.client: Resource
+        self.request_delay = 5
 
     def setup(self):
         if self.config and self.config.auth_config:
@@ -60,6 +61,9 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             settings = GoogleAPIKeySetting()
         API_KEY = settings.GOOGLE_API_KEY.get_secret_value()
         self.client = build('youtube', 'v3', developerKey=API_KEY)
+
+        if self.config.request_delay:
+            self.request_delay = self.config.request_delay
 
     def transform_config(self, abstract_config: CollectConfig) -> YoutubeSearchParameters:
         return YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
@@ -92,7 +96,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             posts: list[DBPost] = [self.create_post_entry(post, task) for post in result]
             submit_posts(posts)
             task.next()
-            sleep(5)  # todo parameter
+            sleep(self.request_delay)
         db_funcs.set_task_status(task.id, CollectionStatus.DONE)
         logger.info(f"{self.platform_name} task '{task.task_name}' finished")
         return True
@@ -111,7 +115,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
 
             videos: list[dict] = []
             for search_item, details_item in zip(search_response["items"], videos_response["items"]):
-                print(search_item)
+                # print(search_item)
                 v = {
                         k: search_item[k] for k in ["id", "snippet"]
                     } | {

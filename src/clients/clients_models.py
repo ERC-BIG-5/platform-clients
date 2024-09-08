@@ -22,6 +22,7 @@ class CollectConfig(BaseModel):
 class ClientConfig(BaseModel):
     model_config = {'extra': "allow"}
     auth_config: Optional[dict[str, str]] = None
+    request_delay: Optional[int] = None
 
 class ClientTaskConfig(BaseModel):
     model_config = {'extra': "allow"}
