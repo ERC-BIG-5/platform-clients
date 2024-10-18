@@ -1,9 +1,6 @@
 from pathlib import Path
 from typing import Optional, Type, Sequence
 
-from pydantic import BaseModel
-from pydantic_settings import BaseSettings
-
 from src.clients.abstract_client import AbstractClient
 from src.clients.clients_models import ClientTaskConfig, ClientConfig
 from src.clients.instances.twitter_client import TwitterClient

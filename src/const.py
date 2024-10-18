@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-PROJECT_PATH = Path(__file__).parent.parent.resolve()
+PROJECT_PATH = Path("/home/rsoleyma/projects/platforms-clients")
 BASE_DATA_PATH = PROJECT_PATH / "data"
 MISC_PATH = BASE_DATA_PATH / "misc"
 CLIENTS_TASKS_PATH = BASE_DATA_PATH / "clients_tasks"

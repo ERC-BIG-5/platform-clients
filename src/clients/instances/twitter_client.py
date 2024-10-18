@@ -1,9 +1,11 @@
 from datetime import datetime
+from typing import TypeVar
 
-from pydantic import SecretStr, Field
+from pydantic import SecretStr, Field, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from twscrape import API, gather, User
 
+from src.clients.clients_models import ClientTaskConfig
 from src.const import PLATFORM_TWITTER, MISC_PATH, PostType
 from src.clients.abstract_client import AbstractClient, CollectConfig
 from src.db.db_models import DBUser, DBPost
@@ -21,7 +23,8 @@ class TwitterConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='allow')
 
 
-class TwitterClient[Tweet](AbstractClient):
+
+class TwitterClient[TwitterConfig,Tweet](AbstractClient):
 
     def __init__(self, config: TwitterConfig):
         super().__init__(config)
@@ -60,7 +63,7 @@ class TwitterClient[Tweet](AbstractClient):
             post_entry.user = user
         return tweets
 
-    def create_post_entry(self, post: Tweet) -> DBPost:
+    def create_post_entry(self, post: Tweet, task: ClientTaskConfig) -> DBPost:
         return DBPost(
             platform=PLATFORM_TWITTER,
             post_url=post.url,
