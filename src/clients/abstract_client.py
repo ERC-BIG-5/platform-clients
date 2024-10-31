@@ -19,10 +19,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
     def __init__(self, config: ClientConfig):
         self.config = config
         self._task_queue: list[ClientTaskConfig] = []
-        if inspect.iscoroutinefunction(self.setup):
-            asyncio.run(self.setup())
-        else:
-            self.setup()
+
 
     @abstractmethod
     def setup(self):

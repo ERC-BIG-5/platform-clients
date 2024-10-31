@@ -10,10 +10,6 @@ from yaml import Loader
 from src.const import MAIN_DIRS, PROJECT_PATH
 
 
-def init_folders():
-    for dir in MAIN_DIRS:
-        dir.mkdir(exist_ok=True)
-
 
 def relative_to_project_path(path: Path, parenthesis: bool = True) -> str:
     p = str(path.relative_to(PROJECT_PATH))

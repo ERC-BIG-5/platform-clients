@@ -98,6 +98,7 @@ else:
 
 def init_db():
     if BIG5_CONFIG.db_type == "sqlite":
+        logger.info(f"init sqlite db")
         if BIG5_CONFIG.reset_db:
             delete_resp = input(f"Do you want to delete the db? : y/ other key\n")
             if delete_resp == "y":
@@ -107,6 +108,7 @@ def init_db():
         create_sqlite_db()
     # ...
     elif BIG5_CONFIG.db_type == "postgres":
+        logger.info(f"init postgres db")
         create_postgres_db("big5", True)
 
 class DBSessionManager:

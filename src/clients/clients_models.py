@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.const import CollectionStatus, ENV_FILE_PATH
@@ -19,23 +19,26 @@ class CollectConfig(BaseModel):
     location_base: Optional[str] = None
     location_mod: Optional[str] = None
 
+
 class ClientConfig(BaseModel):
     model_config = {'extra': "allow"}
     auth_config: Optional[dict[str, str]] = None
-    request_delay: Optional[int] = None
+    request_delay: Optional[int] = 0
+
 
 class ClientTaskConfig(BaseModel):
     model_config = {'extra': "allow"}
-    id: Optional[int] = None
+    id: Optional[int] = Field(None, init=False)
     task_name: str
     platform: str
     collection_config: list[CollectConfig]
-    client_config: Optional[ClientConfig] = None
-    status: CollectionStatus = CollectionStatus.INIT
-    time_added: Optional[datetime] = None
-    steps_done: Optional[int] = -1
+    client_config: Optional[ClientConfig] = Field(default_factory=ClientConfig)
     #
-    current_step_config: Optional[CollectConfig] = None
+    status: CollectionStatus = Field(CollectionStatus.INIT, init=False)
+    time_added: Optional[datetime] = Field(None, init=False)
+    steps_done: Optional[int] = Field(-1, init=False)
+    #
+    #current_step_config: Optional[CollectConfig]= Field(None, init=False)
 
     @property
     def next_task_idx(self):

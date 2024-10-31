@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 from pathlib import Path
 from typing import Optional, Type, Sequence
 
@@ -34,6 +36,10 @@ def setup_client(platform_name: PLATFORMS,
     """
     client = client_classes[platform_name](config)
     clients[platform_name] = client
+    if inspect.iscoroutinefunction(client.setup):
+        asyncio.run(client.setup())
+    else:
+        client.setup()
     return client
 
 
@@ -90,6 +96,9 @@ def check_new_client_tasks() -> list[str]:
         if processed and BIG5_CONFIG.moved_processed_tasks:
             file.rename(PROCESSED_TASKS_PATH / file.name)
             added_task.append(task.task_name)
+        else:
+            logger.debug(f"task of file exists already: {file.name}")
+    logger.info(f"new tasks: # {len(added_task)}")
     return added_task
 
 

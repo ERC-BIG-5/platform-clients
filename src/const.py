@@ -16,6 +16,8 @@ ENV_FILE_PATH = (PROJECT_PATH / ".env").absolute().as_posix()
 
 MAIN_DIRS = [BASE_DATA_PATH, CLIENTS_TASKS_PATH, PROCESSED_TASKS_PATH, MISC_PATH]
 
+for dir in MAIN_DIRS:
+    dir.mkdir(exist_ok=True)
 
 class Big5Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
