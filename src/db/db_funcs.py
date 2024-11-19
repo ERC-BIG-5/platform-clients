@@ -124,11 +124,11 @@ def set_task_status(task_id: int, status: CollectionStatus,
     task: DBCollectionTask = get_task(task_id)
     with Session() as session:
         task.status = status
-        if found_items:
+        if found_items != None:
             task.found_items = found_items
-        if added_items:
+        if added_items != None:
             task.added_items = added_items
-        if duration:
-            task.duration = int(duration)
+        if duration != None:
+            task.collection_duration = int(duration * 1000)
         session.add(task)
         session.commit()

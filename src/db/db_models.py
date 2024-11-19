@@ -1,12 +1,11 @@
 from datetime import datetime
-
 from enum import Enum as PyEnum
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Enum, func,UniqueConstraint
+
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Enum, func, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from src.clients.clients_models import CollectionStatus
-
 from src.const import PostType
 
 Base = declarative_base()
@@ -47,21 +46,21 @@ class DBComment(Base):
 class DBCollectionTask(Base):
     __tablename__ = 'collection_task'
 
+    # this for alembic
     __table_args__ = (
         UniqueConstraint('task_name', name='uq_task_name'),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    task_name: Mapped[str] = mapped_column(String(50),nullable=False)
+    task_name: Mapped[str] = mapped_column(String(50), nullable=False)
     platform: Mapped[str] = mapped_column(String(20), nullable=False)
     collection_config: Mapped[dict] = mapped_column(JSON, nullable=False)
     found_items: Mapped[int] = mapped_column(Integer, nullable=True)
     added_items: Mapped[int] = mapped_column(Integer, nullable=True)
+    # in millis
     collection_duration: Mapped[int] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(Enum(CollectionStatus), nullable=False, default=CollectionStatus.INIT)
     time_added: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
-
-
 
     def __repr__(self) -> str:
         return f"CollectionTask: '{self.task_name}' / {self.platform}. ({self.status.name})"
@@ -70,6 +69,7 @@ class DBCollectionTask(Base):
 class DBPost(Base):
     __tablename__ = 'post'
 
+    # this for alembic
     __table_args__ = (
         UniqueConstraint('post_url', name='uq_post_url'),
     )
@@ -94,4 +94,3 @@ class DBPost(Base):
     # content_schema: Mapped[DBPostContentSchema] = relationship(back_populates="posts")
 
     comments: Mapped[list[DBComment]] = relationship(back_populates="post")
-

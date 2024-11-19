@@ -1,18 +1,17 @@
-import time
-
-import itertools
 from asyncio import get_event_loop
 from datetime import datetime
 from pathlib import Path
-from time import sleep
 from typing import Optional, Literal, Sequence, Union, Protocol
 
+import itertools
 import pyrfc3339
+import time
 import yt_dlp
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from pydantic import SecretStr, BaseModel, Field, field_validator, field_serializer
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from time import sleep
 
 from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings, ClientConfig
@@ -52,7 +51,7 @@ class YoutubeSearchParameters(BaseModel):
         return ",".join(value)
 
     # "channel","playlist","video"
-    type: Optional[str] = Field(
+    type: Optional[Literal["video", "channel", "playlist"]] = Field(
         default="video",  # [channel,playlist,video]
         description="Resource type to retrieve (video,channel,playlist)"
     )
@@ -140,7 +139,7 @@ class YoutubeSearchParameters(BaseModel):
         description="Filter based on caption availability"
     )
 
-    # todo investiate....
+    # todo investigate....
     # https://developers.google.com/youtube/v3/docs/videoCategories
     videoCategoryId: Optional[str] = Field(
         default=None,
@@ -322,7 +321,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         logger.debug(f"Getting data: {repr(task)}")
         start_time = time.time()
         # todo a more specific type
-        result:list[dict] = get_event_loop().run_until_complete(self.collect(yt_config, task.collection_config))
+        result: list[dict] = get_event_loop().run_until_complete(self.collect(yt_config, task.collection_config))
         duration = time.time() - start_time
         # todo do we ever get a None still?
         if result is None:
@@ -356,6 +355,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         while has_more_pages:
             try:
                 # region-code is automatically set to user locatin (e.g. ES)
+                logger.debug(config.model_dump_json(exclude_none=True))
                 config.maxResults = min(50, generic_config.limit - len(all_response_items))  # remaining
                 search_response = self.client.search().list(**config.model_dump(exclude_none=True)).execute()
                 pages += 1
@@ -389,9 +389,22 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             all_videos_results.extend(videos_response.get('items', []))
 
         videos: list[dict] = []
-        for search_item, details_item in zip(all_response_items, all_videos_results):
+
+        zipped: list[tuple[dict, dict]] = []
+        if len(all_videos_results) != len(all_response_items):
+            logger.warning(
+                f"Number of videos returned ({len(all_videos_results)}) does not match number of items ({len(all_response_items)})"
+            )
+            response_items_map = {si["id"]["videoId"]: si for si in all_response_items}
+            detail_items_map = {si["id"]: si for si in all_videos_results}
+            for k, v in response_items_map.items():
+                zipped.append((v, detail_items_map.get(k, {})))
+        else:
+            zipped = list(zip(all_response_items, all_videos_results))
+
+        for search_item, details_item in zipped:
             # print(search_item)
-            assert search_item["id"]["videoId"] == details_item["id"]
+            # assert search_item["id"]["videoId"] == details_item["id"]
             v = {
                     k: search_item[k] for k in ["id", "snippet"]
                 } | {
