@@ -63,7 +63,7 @@ def create_sqlite_db():
         create_database(engine.url)
         # TODO test, which of those is needed?
         # Create all tables in the database
-        Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
     # print(f"SQLite database created at {db_path}")
 
 

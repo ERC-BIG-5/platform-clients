@@ -5,8 +5,6 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.const import CollectionStatus, ENV_FILE_PATH
-from src.db import db_funcs
-from src.db.db_session import Session
 
 
 class CollectConfig(BaseModel):
@@ -40,12 +38,6 @@ class ClientTaskConfig(BaseModel):
     #
     status: CollectionStatus = Field(CollectionStatus.INIT, init=False)
     time_added: Optional[datetime] = Field(None, init=False)
-
-    def done(self):
-        with Session() as session:
-            db_obj = db_funcs.get_task(self.id)
-            session.add(db_obj)
-            session.commit()
 
 
     def __repr__(self):

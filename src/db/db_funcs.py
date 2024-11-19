@@ -34,6 +34,7 @@ def add_db_collection_task(collection_task: "ClientTaskConfig") -> bool:
             collection_config=collection_task.model_dump()["collection_config"],
         )
         if exists_and_overwrite:
+            logger.debug(f"Collection task set to test and overwrite. overwriting existing task")
             prev = session.query(DBCollectionTask).where(DBCollectionTask.task_name == task_name)
             task.id = task.id
             prev.delete()
@@ -60,13 +61,15 @@ def filter_posts_with_existing_post_urls(posts: list[DBPost]) -> list[DBPost]:
         logger.debug(f"filtering posts with urls: {found_post_urls}")
     return list(filter(lambda p: p.post_url not in found_post_urls, posts))
 
-def submit_posts(posts: list[DBPost]):
+def submit_posts(posts: list[DBPost]) -> int:
     posts = filter_duplicate_post_urls(posts)
     posts = filter_posts_with_existing_post_urls(posts)
-    with Session() as session:
-        session.add_all(posts)
-        session.commit()
-
+    logger.debug(f"After filtering duplicates... submitting {len(posts)} posts")
+    if posts:
+        with Session() as session:
+            session.add_all(posts)
+            session.commit()
+    return len(posts)
 
 def get_posts(platform: str,
               task_name: Optional[str] = None,
@@ -109,9 +112,23 @@ def get_task(task_id: int) -> DBCollectionTask:
         return session.scalar(select(DBCollectionTask).where(DBCollectionTask.id == task_id))
 
 
-def set_task_status(task_id: int, status: CollectionStatus):
+def task_done(task: "ClientTaskConfig"):
+    with Session() as session:
+        db_obj = get_task(task.id)
+        session.add(db_obj)
+        session.commit()
+
+def set_task_status(task_id: int, status: CollectionStatus,
+                    found_items: Optional[int] = None, added_items: Optional[int] = None,
+                    duration: Optional[int] = None):
     task: DBCollectionTask = get_task(task_id)
     with Session() as session:
         task.status = status
+        if found_items:
+            task.found_items = found_items
+        if added_items:
+            task.added_items = added_items
+        if duration:
+            task.duration = int(duration)
         session.add(task)
         session.commit()

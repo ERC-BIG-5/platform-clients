@@ -1,3 +1,5 @@
+import time
+
 import itertools
 from asyncio import get_event_loop
 from datetime import datetime
@@ -16,7 +18,7 @@ from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings, ClientConfig
 from src.const import ENV_FILE_PATH, PostType, CollectionStatus, CLIENTS_DATA_PATH
 from src.db import db_funcs
-from src.db.db_funcs import submit_posts
+from src.db.db_funcs import submit_posts, task_done
 from src.db.db_models import DBUser, DBPost
 from src.misc.project_logging import get_b5_logger
 
@@ -105,7 +107,8 @@ class YoutubeSearchParameters(BaseModel):
 
     relevanceLanguage: Optional[str] = Field(
         default=None,
-        description="ISO 639-1 two-letter language code"
+        description="ISO 639-1 two-letter language code",
+        alias="language"
     )
 
     # Channel parameters
@@ -317,52 +320,59 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         # task.update_current_config()
         yt_config = self.transform_config(task.collection_config)
         logger.debug(f"Getting data: {repr(task)}")
-        result = get_event_loop().run_until_complete(self.collect(yt_config))
+        start_time = time.time()
+        # todo a more specific type
+        result:list[dict] = get_event_loop().run_until_complete(self.collect(yt_config, task.collection_config))
+        duration = time.time() - start_time
+        # todo do we ever get a None still?
         if result is None:
             # raise ValueError("Could not fetch data")
             db_funcs.set_task_status(task.id, CollectionStatus.PAUSED)
             return False
         posts: list[DBPost] = [self.create_post_entry(post, task) for post in result]
-        submit_posts(posts)
-        task.done()
+        num_posts = submit_posts(posts)
+
+        task_done(task)
         sleep(self.request_delay)
-        db_funcs.set_task_status(task.id, CollectionStatus.DONE)
+        db_funcs.set_task_status(task.id, CollectionStatus.DONE,
+                                 len(result),
+                                 num_posts,
+                                 duration)
         logger.info(f"{self.platform_name} task '{task.task_name}' finished")
         return True
 
-    async def collect(self, config: YoutubeSearchParameters) -> list[dict]:
+    async def collect(self, config: YoutubeSearchParameters, generic_config: ClientTaskConfig) -> list[dict]:
 
         # ,contentDetails,statistics,status,topicDetails,recordingDetails,localizations",
         part = getattr(config, "part")
         all_response_items = []
         pages = 0
         # while self.has_keys_available:
-        has_morePages = True
+        has_more_pages = True
         # rename in config to limit. we are always using 50 or lower, depending if there is a limit
-        limit = config.maxResults = 2  # TODO!!!
         delattr(config, "part")
         config.part = "id,snippet"
 
-        while has_morePages:
+        while has_more_pages:
             try:
                 # region-code is automatically set to user locatin (e.g. ES)
-                config.maxResults = min(50, limit - len(all_response_items))  # remaining
+                config.maxResults = min(50, generic_config.limit - len(all_response_items))  # remaining
                 search_response = self.client.search().list(**config.model_dump(exclude_none=True)).execute()
                 pages += 1
                 all_response_items.extend(search_response.get('items', []))
                 if (nextPageToken := search_response.get("nextPageToken")):
                     config.pageToken = nextPageToken
                 else:
-                    has_morePages = False
-                if len(all_response_items) >= limit:
+                    has_more_pages = False
+                if len(all_response_items) >= generic_config.limit:
                     break
             except HttpError as e:
                 print(f"An HTTP error {e.resp.status} occurred:\n{e.content.decode('utf-8')}")
-                has_morePages = False
+                has_more_pages = False
                 # remove those things...
                 # if e.status_code != 400:
                 #     self.set_new_client()
-        logger.info(f"all responses: {len(all_response_items)}; num pages: {pages}")
+        logger.info(f"# response items: {len(all_response_items)}; num pages: {pages}")
 
         video_ids = [r["id"]["videoId"] for r in all_response_items]
         all_videos_results = []
@@ -405,7 +415,6 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             post_type=PostType.REGULAR,
             content=post,
             collection_task_id=task.id,
-            # collection_step=task.steps_done + 1
         )
 
     def create_user_entry(self, user: UserEntry) -> DBUser:

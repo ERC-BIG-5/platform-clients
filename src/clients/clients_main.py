@@ -10,7 +10,7 @@ from src.clients.clients_models import ClientTaskConfig, ClientConfig, ClientTas
 from src.clients.instances.twitter_client import TwitterClient
 from src.clients.instances.youtube_client import YoutubeClient
 from src.clients.task_groups import generate_configs
-from src.const import PLATFORMS, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH
+from src.const import CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH
 from src.db import db_funcs
 from src.db.db_models import DBCollectionTask
 from src.misc.files import get_abs_path, read_data
@@ -70,7 +70,8 @@ def progress_tasks(platforms: list[str] = None) -> None:
     logger.debug("progressing client tasks")
     platform_grouped = get_platforms_task_queues(platforms)
     for platform_name, platform_tasks in platform_grouped.items():
-        # this is just adding one att a time
+        # this is just adding one at a time
+        # convert to platform specific task
         tasks = [ClientTaskConfig.model_validate(db_task, from_attributes=True)
                  for db_task in platform_tasks]
         client = get_platform_client(platform_name, tasks[0].client_config)
@@ -108,20 +109,21 @@ def check_new_client_tasks() -> list[str]:
     added_task = []
     for file in CLIENTS_TASKS_PATH.glob("*.json"):
         tasks = load_tasks(file)
-        all_processed = True
+        all_added = True
         for task in tasks:
             processed = db_funcs.add_db_collection_task(task)
             if processed:
                 added_task.append(task.task_name)
             else:
-                all_processed = False
+                all_added = False
 
-
-        if all_processed and BIG5_CONFIG.moved_processed_tasks:
+        # todo only move added tasks?
+        if all_added and BIG5_CONFIG.moved_processed_tasks:
             file.rename(PROCESSED_TASKS_PATH / file.name)
         else:
             logger.debug(f"task of file exists already: {file.name}")
     logger.info(f"new tasks: # {len(added_task)}")
+    logger.debug(f"new tasks: # {[t for t in  added_task]}")
     return added_task
 
 
