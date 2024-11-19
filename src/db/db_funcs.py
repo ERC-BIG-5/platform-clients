@@ -1,11 +1,10 @@
-from sys import platform
 from typing import Optional, Sequence
 
 from sqlalchemy import select, exists
 
 from src.const import CollectionStatus
 from src.db.db_models import DBPost, DBCollectionTask
-from src.db.db_session import Session, db_manager
+from src.db.db_session import Session
 from src.misc.project_logging import get_b5_logger
 
 logger = get_b5_logger(__file__)
@@ -13,28 +12,45 @@ logger = get_b5_logger(__file__)
 
 def check_task_name_exists(task_name: str) -> bool:
     with Session() as session:
-        stmt = exists().where(DBCollectionTask.task_name == task_name)
-        result = session.query(stmt).scalar()
-        return bool(result)
+        return session.query(exists().where(DBCollectionTask.task_name==task_name)).scalar()
 
+def get_task(task_name: str, session: Session) -> DBCollectionTask:
+    return session.query(DBCollectionTask).where(DBCollectionTask.task_name == task_name)
 
+# todo fix import stuff...
 def add_db_collection_task(collection_task: "ClientTaskConfig") -> bool:
     task_name = collection_task.task_name
+    exists_and_overwrite = False
     if check_task_name_exists(task_name):
-        logger.debug(f"client collection task exists already: {task_name}")
-        return False
+        logger.info(f"client collection task exists already: {task_name}")
+        if collection_task.test and collection_task.overwrite:
+            exists_and_overwrite = True
+        else:
+            return False
     with Session() as session:
         task = DBCollectionTask(
             task_name=task_name,
             platform=collection_task.platform,
             collection_config=collection_task.model_dump()["collection_config"],
-            total_steps=len(collection_task.collection_config)
         )
+        if exists_and_overwrite:
+            prev = session.query(DBCollectionTask).where(DBCollectionTask.task_name == task_name)
+            task.id = task.id
+            prev.delete()
+
         session.add(task)
         session.commit()
         logger.info(f"Added new client collection task: {task_name}")
         return True
 
+def filter_duplicate_post_urls(posts: list[DBPost]) -> list[DBPost]:
+    post_urls:set[str] = set()
+    accepted_posts: list[DBPost] = []
+    for post in posts:
+        if post.post_url not in post_urls:
+            accepted_posts.append(post)
+            post_urls.add(post.post_url)
+    return accepted_posts
 
 def filter_posts_with_existing_post_urls(posts: list[DBPost]) -> list[DBPost]:
     post_urls = [p.post_url for p in posts]
@@ -45,6 +61,7 @@ def filter_posts_with_existing_post_urls(posts: list[DBPost]) -> list[DBPost]:
     return list(filter(lambda p: p.post_url not in found_post_urls, posts))
 
 def submit_posts(posts: list[DBPost]):
+    posts = filter_duplicate_post_urls(posts)
     posts = filter_posts_with_existing_post_urls(posts)
     with Session() as session:
         session.add_all(posts)

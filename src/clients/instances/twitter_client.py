@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from twscrape import API, gather, User
 
 from src.clients.clients_models import ClientTaskConfig
-from src.const import PLATFORM_TWITTER, MISC_PATH, PostType
+from src.const import  MISC_PATH, PostType
 from src.clients.abstract_client import AbstractClient, CollectConfig
 from src.db.db_models import DBUser, DBPost
 from src.misc.project_logging import get_b5_logger
@@ -25,6 +25,8 @@ class TwitterConfig(BaseSettings):
 
 
 class TwitterClient[TwitterConfig,Tweet](AbstractClient):
+
+
 
     def __init__(self, config: TwitterConfig):
         super().__init__(config)
@@ -65,7 +67,7 @@ class TwitterClient[TwitterConfig,Tweet](AbstractClient):
 
     def create_post_entry(self, post: Tweet, task: ClientTaskConfig) -> DBPost:
         return DBPost(
-            platform=PLATFORM_TWITTER,
+            platform=self.platform_name,
             post_url=post.url,
             date_created=post.date,
             date_collected=datetime.now(),
@@ -76,7 +78,7 @@ class TwitterClient[TwitterConfig,Tweet](AbstractClient):
 
     def create_user_entry(self, user: User) -> DBUser:
         return DBUser(
-            platform=PLATFORM_TWITTER,
+            platform=self.platform_name,
             platform_username=user.username
         )
 

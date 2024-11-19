@@ -14,11 +14,8 @@
       "type": "string"
     },
     "collection_config": {
-      "type": "array",
-      "items": {
-        "type": "object"
-      },
-      "default": []
+      "type": "object",
+      "default": {}
     },
     "auth_config": {
       "type": "object"

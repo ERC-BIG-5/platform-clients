@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,52 +27,44 @@ class ClientConfig(BaseModel):
 
 
 class ClientTaskConfig(BaseModel):
-    model_config = {'extra': "allow"}
-    id: Optional[int] = Field(None, init=False)
+    model_config = {'extra': "forbid"}
     task_name: str
+    id: Optional[int] = Field(None, init=False)
+
     platform: str
-    collection_config: list[CollectConfig]
+    collection_config: CollectConfig
     client_config: Optional[ClientConfig] = Field(default_factory=ClientConfig)
+    #
+    test: bool = False
+    overwrite: bool = False
     #
     status: CollectionStatus = Field(CollectionStatus.INIT, init=False)
     time_added: Optional[datetime] = Field(None, init=False)
-    steps_done: Optional[int] = Field(-1, init=False)
-    #
-    #current_step_config: Optional[CollectConfig]= Field(None, init=False)
 
-    @property
-    def next_task_idx(self):
-        return self.steps_done + 1
-
-    def update_current_config(self):
-        if not self.current_step_config:
-            self.current_step_config = CollectConfig()
-        for step in range(self.next_task_idx + 1):
-            fields = self.collection_config[step].model_dump(exclude_unset=True, exclude_defaults=True)
-            for k, v in fields.items():
-                setattr(self.current_step_config, k, v)
-
-    def next(self):
+    def done(self):
         with Session() as session:
             db_obj = db_funcs.get_task(self.id)
-            db_obj.steps_done += 1
             session.add(db_obj)
             session.commit()
-        self.steps_done += 1
 
-    def __len__(self):
-        return len(self.collection_config)
-
-    def has_more(self) -> bool:
-        """
-        check, if there are more steps to do.
-        +1, because, steps_done=0, means we did, the first step.
-        :return:
-        """
-        return (self.steps_done + 1) < len(self)
 
     def __repr__(self):
         return f"Collection-Task: {self.task_name} ({self.platform})"
+
+class TimeConfig(BaseModel):
+
+    start: str  # ISO format timestamp
+    end: str  # ISO format timestamp
+    interval: dict[str, int]  # maps directly to timedelta kwargs
+
+class ClientTaskGroupConfig(BaseModel):
+    # one file, many tasks
+    platform: str
+    group_prefix: str
+    id: Optional[int] = Field(None, init=False)
+    time_config: TimeConfig
+    static_params: dict[str, Any]  # Parameters that stay constant
+    variable_params: dict[str, list[Any]] = Field(default_factory=dict) # Parameters to permute
 
 
 class BaseEnvSettings(BaseSettings):

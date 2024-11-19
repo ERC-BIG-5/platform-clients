@@ -84,7 +84,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
             "platform": self.platform_name,
             "date_collected": datetime.now(),
             "collection_task_id": task.id,
-            "collection_step": task.steps_done + 1
+            # "collection_step": task.steps_done + 1
         }
 
     @abstractmethod

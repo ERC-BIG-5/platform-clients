@@ -3,10 +3,13 @@ import inspect
 from pathlib import Path
 from typing import Optional, Type, Sequence
 
+from pydantic_core import ValidationError
+
 from src.clients.abstract_client import AbstractClient
-from src.clients.clients_models import ClientTaskConfig, ClientConfig
+from src.clients.clients_models import ClientTaskConfig, ClientConfig, ClientTaskGroupConfig
 from src.clients.instances.twitter_client import TwitterClient
 from src.clients.instances.youtube_client import YoutubeClient
+from src.clients.task_groups import generate_configs
 from src.const import PLATFORMS, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH
 from src.db import db_funcs
 from src.db.db_models import DBCollectionTask
@@ -26,7 +29,7 @@ Loaded clients
 clients: dict[str, AbstractClient] = {}
 
 
-def setup_client(platform_name: PLATFORMS,
+def setup_client(platform_name: str,
                  config: Optional[ClientConfig] = None) -> AbstractClient:
     """
     Initiate and set up a client for a specific platform
@@ -43,7 +46,7 @@ def setup_client(platform_name: PLATFORMS,
     return client
 
 
-def get_platform_client(platform_name: PLATFORMS, config: ClientConfig) -> AbstractClient:
+def get_platform_client(platform_name: str, config: ClientConfig) -> AbstractClient:
     """
     Get existing client or create a new one
     :param platform_name:
@@ -53,6 +56,7 @@ def get_platform_client(platform_name: PLATFORMS, config: ClientConfig) -> Abstr
     if platform_name in clients:
         return clients[platform_name]
     else:
+        # todo, catch missing platform
         return setup_client(platform_name, config)
 
 
@@ -74,15 +78,27 @@ def progress_tasks(platforms: list[str] = None) -> None:
         client.continue_tasks()
 
 
-def load_task(task_path: Path) -> ClientTaskConfig:
+def load_tasks(task_path: Path) -> list[ClientTaskConfig]:
     """
     Load an validate a task file
     :param task_path: absolute or relative path (to CLIENTS_TASKS_PATH)
     :return: task object
     """
     abs_task_path = get_abs_path(task_path, CLIENTS_TASKS_PATH)
-    return ClientTaskConfig.model_validate(read_data(abs_task_path))
+    data = read_data(abs_task_path)
+    ct_cfg_err = None
+    try:
+        return [ClientTaskConfig.model_validate(data)]
+    except ValidationError as v_err:
+        ct_cfg_err = v_err
 
+    try:
+        return generate_configs(ClientTaskGroupConfig.model_validate(data))
+    except ValidationError as v_err:
+        print(ct_cfg_err)
+        print(v_err)
+        logger.error("Task file cannot be parsed neither as TaskConfig nor as TaskGroupConfig")
+        return []
 
 def check_new_client_tasks() -> list[str]:
     """
@@ -91,11 +107,18 @@ def check_new_client_tasks() -> list[str]:
     """
     added_task = []
     for file in CLIENTS_TASKS_PATH.glob("*.json"):
-        task = load_task(file)
-        processed = db_funcs.add_db_collection_task(task)
-        if processed and BIG5_CONFIG.moved_processed_tasks:
+        tasks = load_tasks(file)
+        all_processed = True
+        for task in tasks:
+            processed = db_funcs.add_db_collection_task(task)
+            if processed:
+                added_task.append(task.task_name)
+            else:
+                all_processed = False
+
+
+        if all_processed and BIG5_CONFIG.moved_processed_tasks:
             file.rename(PROCESSED_TASKS_PATH / file.name)
-            added_task.append(task.task_name)
         else:
             logger.debug(f"task of file exists already: {file.name}")
     logger.info(f"new tasks: # {len(added_task)}")

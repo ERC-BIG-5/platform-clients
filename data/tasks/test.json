@@ -1,0 +1,17 @@
+{
+  "platform": "youtube",
+  "task_name": "europe_en_feb",
+  "collection_config": {
+    "query": "",
+    "limit": 5000,
+    "part": [
+      "contentDetails",
+      "status",
+      "statistics",
+      "topicDetails",
+      "localizations"
+    ]
+  },
+  "test": false,
+  "overwrite": false
+}

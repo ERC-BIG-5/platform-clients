@@ -8,8 +8,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_PATH = Path("/home/rsoleyma/projects/platforms-clients")
 BASE_DATA_PATH = PROJECT_PATH / "data"
 MISC_PATH = BASE_DATA_PATH / "misc"
-CLIENTS_TASKS_PATH = BASE_DATA_PATH / "clients_tasks"
+CLIENTS_TASKS_PATH = BASE_DATA_PATH / "tasks"
 PROCESSED_TASKS_PATH = BASE_DATA_PATH / "processed_tasks"
+CLIENTS_DATA_PATH = BASE_DATA_PATH / "clients"
 
 LOG_CONFIG_FILE = BASE_DATA_PATH / "logging.json"
 ENV_FILE_PATH = (PROJECT_PATH / ".env").absolute().as_posix()
@@ -28,11 +29,6 @@ class Big5Config(BaseSettings):
 
 
 BIG5_CONFIG = Big5Config()
-
-PLATFORM_TWITTER = Literal["twitter"]
-PLATFORM_YOUTUBE = Literal["youtube"]
-
-PLATFORMS =  PLATFORM_TWITTER | PLATFORM_YOUTUBE
 
 
 class CollectionStatus(Enum):

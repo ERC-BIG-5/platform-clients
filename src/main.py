@@ -1,6 +1,7 @@
 from src.clients.clients_main import check_new_client_tasks, progress_tasks, get_platform_client
 from src.clients.clients_models import ClientConfig
 from src.const import BIG5_CONFIG
+from src.db.db_funcs import get_posts
 from src.db.db_session import init_db
 
 
@@ -17,3 +18,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    """
+    posts = get_posts(platform="youtube")
+    print(posts[2].platform_id)
+    """

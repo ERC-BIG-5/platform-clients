@@ -136,11 +136,12 @@ class DBSessionManager:
 
 db_manager = DBSessionManager(Session)
 
+"""
 if __name__ == "__main__":
     init_db()
     Session = sessionmaker(bind=engine)
     session = Session()
-
+"""
     # Create a user
 
 

@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Integer, Enum, func
+from enum import Enum as PyEnum
+from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Enum, func
 # from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -10,7 +11,6 @@ from src.const import PostType
 
 Base = declarative_base()
 
-from enum import Enum as PyEnum
 
 
 class DBUser(Base):
@@ -51,10 +51,10 @@ class DBCollectionTask(Base):
     task_name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     platform: Mapped[str] = mapped_column(String(20), nullable=False)
     collection_config: Mapped[dict] = mapped_column(JSON, nullable=False)
-    total_steps: Mapped[int] = mapped_column(Integer, nullable=False)
+    # total_steps: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(Enum(CollectionStatus), nullable=False, default=CollectionStatus.INIT)
     time_added: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
-    steps_done: Mapped[int] = mapped_column(Integer, nullable=False, default=-1)
+    # steps_done: Mapped[int] = mapped_column(Integer, nullable=False, default=-1)
 
     def __repr__(self) -> str:
         return f"CollectionTask: '{self.task_name}' / {self.platform}. ({self.status.name})"
@@ -68,13 +68,13 @@ class DBPost(Base):
     platform_id: Mapped[str] = mapped_column(String(50), nullable=True)
     post_url: Mapped[str] = mapped_column(String(60), nullable=False, unique=True)
     date_created: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    post_type: Mapped[str] = mapped_column(Enum(PostType), nullable=False)
+    post_type: Mapped[PyEnum] = mapped_column(Enum(PostType), nullable=False)
     content: Mapped[dict] = Column(JSON)
     date_collected: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
     # todo: temp nullable
     collection_task_id: Mapped[int] = mapped_column(ForeignKey("collection_task.id"), nullable=True)
-    collection_step: Mapped[int] = mapped_column(Integer, nullable=True)
+    # collection_step: Mapped[int] = mapped_column(Integer, nullable=True)
 
     # user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     # user: Mapped[DBUser] = relationship(back_populates="posts")

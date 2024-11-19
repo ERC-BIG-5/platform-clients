@@ -1,0 +1,35 @@
+{
+  "platform": "youtube",
+  "group_prefix": "test-multisteps-global1",
+  "static_params": {
+    "query": "",
+    "part": "snippet",
+    "type": "video",
+    "order": "date",
+    "maxResults": 50,
+    "locationRadius": "1000km"
+  },
+  "variable_params": {
+    "location": [
+      "35.229,-115.320",
+      "-80.782,36.794",
+      "-71.405,1.451",
+      "-59.338,-28.246",
+      "-44.962,-22.871",
+      "-4.299,40.144",
+      "3.185,46.193",
+      "-2.583,52.454",
+      "10.673,51.67",
+      "16.08,47.57",
+      "11.863,42.053",
+      "25.391,45.835"
+    ]
+  },
+  "time_config": {
+    "start": "2022-02-01T00:00:00Z",
+    "end": "2022-02-02T00:00:00Z",
+    "interval": {
+      "days": 1
+    }
+  }
+}
