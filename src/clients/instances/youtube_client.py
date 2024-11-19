@@ -95,8 +95,7 @@ class YoutubeSearchParameters(BaseModel):
     publishedBefore: Optional[datetime] = Field(
         default=None,
         alias="to_time",
-        description="Only return resources created before this datetime"
-    )
+        description="Only return resources created before this datetime")
 
     # Region and language parameters
     regionCode: Optional[str] = Field(
@@ -340,41 +339,45 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         logger.info(f"{self.platform_name} task '{task.task_name}' finished")
         return True
 
-    async def collect(self, config: YoutubeSearchParameters, generic_config: ClientTaskConfig) -> list[dict]:
+    async def collect(self, config: YoutubeSearchParameters, generic_config: CollectConfig) -> list[dict]:
 
         # ,contentDetails,statistics,status,topicDetails,recordingDetails,localizations",
         part = getattr(config, "part")
-        all_response_items = []
+        search_result_items = []
         pages = 0
         # while self.has_keys_available:
-        has_more_pages = True
+
         # rename in config to limit. we are always using 50 or lower, depending if there is a limit
         delattr(config, "part")
-        config.part = "id,snippet"
+        config.part = "id"
+        # todo, this needs testing!
+        if "snippet" in part:
+            config.part += ",snippet"
+            parts = part.split(",")
+            parts.remove("snippet")
+            part = ",".join(parts)
 
-        while has_more_pages:
+        #has_more_pages = True
+        while True:
             try:
                 # region-code is automatically set to user locatin (e.g. ES)
                 logger.debug(config.model_dump_json(exclude_none=True))
-                config.maxResults = min(50, generic_config.limit - len(all_response_items))  # remaining
+                config.maxResults = min(50, generic_config.limit - len(search_result_items))  # remaining
                 search_response = self.client.search().list(**config.model_dump(exclude_none=True)).execute()
                 pages += 1
-                all_response_items.extend(search_response.get('items', []))
+                search_result_items.extend(search_response.get('items', []))
                 if (nextPageToken := search_response.get("nextPageToken")):
                     config.pageToken = nextPageToken
                 else:
-                    has_more_pages = False
-                if len(all_response_items) >= generic_config.limit:
+                    break
+                if len(search_result_items) >= generic_config.limit:
                     break
             except HttpError as e:
                 print(f"An HTTP error {e.resp.status} occurred:\n{e.content.decode('utf-8')}")
-                has_more_pages = False
-                # remove those things...
-                # if e.status_code != 400:
-                #     self.set_new_client()
-        logger.info(f"# response items: {len(all_response_items)}; num pages: {pages}")
+                break
+        logger.info(f"# response items: {len(search_result_items)}; num pages: {pages}")
 
-        video_ids = [r["id"]["videoId"] for r in all_response_items]
+        video_ids = [r["id"]["videoId"] for r in search_result_items]
         all_videos_results = []
         for batch in itertools.batched(video_ids, 50):
             try:
@@ -390,21 +393,20 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
 
         videos: list[dict] = []
 
+        # match search and list responses, if they dont match...
         zipped: list[tuple[dict, dict]] = []
-        if len(all_videos_results) != len(all_response_items):
+        if len(search_result_items) != len(all_videos_results):
             logger.warning(
-                f"Number of videos returned ({len(all_videos_results)}) does not match number of items ({len(all_response_items)})"
+                f"Number of videos returned ({len(search_result_items)}) does not match number of items ({len(all_videos_results)})"
             )
-            response_items_map = {si["id"]["videoId"]: si for si in all_response_items}
+            response_items_map = {si["id"]["videoId"]: si for si in search_result_items}
             detail_items_map = {si["id"]: si for si in all_videos_results}
             for k, v in response_items_map.items():
                 zipped.append((v, detail_items_map.get(k, {})))
         else:
-            zipped = list(zip(all_response_items, all_videos_results))
+            zipped = list(zip(search_result_items, all_videos_results))
 
         for search_item, details_item in zipped:
-            # print(search_item)
-            # assert search_item["id"]["videoId"] == details_item["id"]
             v = {
                     k: search_item[k] for k in ["id", "snippet"]
                 } | {
@@ -414,7 +416,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
                 }
             videos.append(v)
 
-        # all_response_items_sorted = sorted(all_response_items, key=lambda i: i["snippet"]["publishedAt"])
+        sorted(videos, key=lambda i: i["snippet"]["publishedAt"])
 
         return videos
 

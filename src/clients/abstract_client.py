@@ -64,11 +64,12 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         pass
 
     @abstractmethod
-    async def collect(self, collect_settings: CollectConfig) -> list[PostEntry]:
+    async def collect(self, collect_settings: CollectConfig, generic_config: CollectConfig) -> list[PostEntry]:
         """
         Make a specific collection (step of a task). This function should use
         the client API
         :param collect_settings:
+        :param generic_config:
         :return:
         """
         pass
