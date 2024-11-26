@@ -40,7 +40,8 @@ def create_postgres_db(db_name: str, drop_existing: bool = False) -> None:
     Base.metadata.create_all(engine)
 
 def sqlite_db_path() -> Path:
-    return (BASE_DATA_PATH / SqliteSettings().SQLITE_FILE_PATH).absolute()
+    print(SqliteSettings().SQLITE_FILE_PATH)
+    return Path(SqliteSettings().SQLITE_FILE_PATH)
 
 def sqlite_engine() -> Engine:
     return  create_engine(f'sqlite:///{sqlite_db_path().as_posix()}')
@@ -98,7 +99,7 @@ else:
 
 def init_db():
     if BIG5_CONFIG.db_type == "sqlite":
-        logger.info(f"init sqlite db")
+        logger.info(f"init sqlite db {sqlite_db_path().as_posix()}")
         if BIG5_CONFIG.reset_db:
             delete_resp = input(f"Do you want to delete the db? : y/ other key\n")
             if delete_resp == "y":

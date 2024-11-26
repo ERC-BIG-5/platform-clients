@@ -1,8 +1,10 @@
+from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.const import ENV_FILE_PATH, BASE_DATA_PATH
-
+from pydantic import field_validator, ValidationInfo
 
 class PostgresCredentials(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
@@ -20,4 +22,9 @@ class PostgresCredentials(BaseSettings):
 
 class SqliteSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
-    SQLITE_FILE_PATH: str = Field((BASE_DATA_PATH / "db.sqlite").absolute().as_posix())
+    DB_REL_PATH: Optional[str] = "db.sqlite"
+    SQLITE_FILE_PATH: str = Field((BASE_DATA_PATH / DB_REL_PATH).absolute().as_posix())
+
+    @field_validator("SQLITE_FILE_PATH")
+    def set_sqlite_path(cls, v, values:ValidationInfo):
+        return (BASE_DATA_PATH / values.data["DB_REL_PATH"]).absolute().as_posix()

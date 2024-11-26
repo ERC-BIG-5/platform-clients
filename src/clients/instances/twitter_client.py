@@ -1,13 +1,12 @@
 from datetime import datetime
-from typing import TypeVar
 
-from pydantic import SecretStr, Field, BaseModel
+from pydantic import SecretStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from twscrape import API, gather, User
 
-from src.clients.clients_models import ClientTaskConfig
-from src.const import  MISC_PATH, PostType
 from src.clients.abstract_client import AbstractClient, CollectConfig
+from src.clients.clients_models import ClientTaskConfig
+from src.const import MISC_PATH, PostType
 from src.db.db_models import DBUser, DBPost
 from src.misc.project_logging import get_b5_logger
 

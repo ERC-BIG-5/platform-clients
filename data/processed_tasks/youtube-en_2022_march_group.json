@@ -1,0 +1,25 @@
+{
+  "platform": "youtube",
+  "group_prefix": "2022_en_march",
+  "static_params": {
+    "limit": 1000,
+    "language": "en",
+    "videoDuration": "short",
+    "part": [
+      "contentDetails",
+      "status",
+      "statistics",
+      "topicDetails",
+      "localizations"
+    ]
+  },
+  "time_config": {
+    "start": "2022-03-01T00:00:00Z",
+    "end": "2022-04-01T00:00:00Z",
+    "interval": {
+      "days": 7
+    }
+  },
+  "test": false,
+  "overwrite": false
+}

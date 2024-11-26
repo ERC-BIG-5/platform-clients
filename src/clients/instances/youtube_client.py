@@ -71,7 +71,7 @@ class YoutubeSearchParameters(BaseModel):
     maxResults: Optional[int] = Field(
         ge=0,
         le=50,
-        default=50,
+        default=2,
         description="Maximum number of items to return"
     )
 
@@ -408,7 +408,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
 
         for search_item, details_item in zipped:
             v = {
-                    k: search_item[k] for k in ["id", "snippet"]
+                    k: search_item[k] for k in ["id","snippet"]
                 } | {
                     k: v for k, v in
                     details_item.items()
