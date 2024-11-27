@@ -1,9 +1,9 @@
 from datetime import datetime
-from enum import Enum as PyEnum
 
+import sqlalchemy
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Enum, func, UniqueConstraint
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.orm import relationship, Mapped, mapped_column, declarative_base
+from sqlalchemy import Enum as SQLAlchemyEnum
 
 from src.clients.clients_models import CollectionStatus
 from src.const import PostType
@@ -59,7 +59,7 @@ class DBCollectionTask(Base):
     added_items: Mapped[int] = mapped_column(Integer, nullable=True)
     # in millis
     collection_duration: Mapped[int] = mapped_column(Integer, nullable=True)
-    status: Mapped[str] = mapped_column(Enum(CollectionStatus), nullable=False, default=CollectionStatus.INIT)
+    status: Mapped[CollectionStatus] = mapped_column(SQLAlchemyEnum(CollectionStatus), nullable=False, default=CollectionStatus.INIT)
     time_added: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
     def __repr__(self) -> str:
@@ -79,7 +79,7 @@ class DBPost(Base):
     platform_id: Mapped[str] = mapped_column(String(50), nullable=True, unique=False)
     post_url: Mapped[str] = mapped_column(String(60), nullable=False)
     date_created: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    post_type: Mapped[PyEnum] = mapped_column(Enum(PostType), nullable=False)
+    post_type: Mapped[PostType] = mapped_column(Enum(PostType), nullable=False, default=PostType.REGULAR)
     content: Mapped[dict] = Column(JSON)
     date_collected: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
@@ -94,3 +94,4 @@ class DBPost(Base):
     # content_schema: Mapped[DBPostContentSchema] = relationship(back_populates="posts")
 
     comments: Mapped[list[DBComment]] = relationship(back_populates="post")
+
