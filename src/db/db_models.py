@@ -1,9 +1,8 @@
 from datetime import datetime
 
-import sqlalchemy
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Enum, func, UniqueConstraint
-from sqlalchemy.orm import relationship, Mapped, mapped_column, declarative_base
 from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy.orm import relationship, Mapped, mapped_column, declarative_base
 
 from src.clients.clients_models import CollectionStatus
 from src.const import PostType
