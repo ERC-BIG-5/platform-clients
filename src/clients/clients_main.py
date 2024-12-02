@@ -12,7 +12,10 @@ from src.clients.instances.youtube_client import YoutubeClient
 from src.clients.task_groups import generate_configs
 from src.const import CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH
 from src.db import db_funcs
+from src.db.db_funcs import main_db_add_new_db, main_db_get_all_platforms
+from src.db.db_mgmt import DatabaseManager, DatabaseConfig
 from src.db.db_models import DBCollectionTask
+from src.db.platform_db_mgmt import PlatformDB
 from src.misc.files import get_abs_path, read_data
 from src.misc.project_logging import get_b5_logger
 
@@ -67,6 +70,17 @@ def progress_tasks(platforms: list[str] = None) -> None:
     TODO, this is synchronously, which we dont want in the end
     :return:
     """
+    platforms_d_models = main_db_get_all_platforms()
+    for platform in platforms_d_models:
+        if platform not in platforms:
+            continue
+        tasks = [ClientTaskConfig.model_validate(db_task, from_attributes=True)
+                 for db_task in platform_tasks]
+        client = get_platform_client(platform_name, tasks[0].client_config)
+        client.add_tasks(tasks)
+        client.continue_tasks()
+
+
     logger.debug("progressing client tasks")
     platform_grouped = get_platforms_task_queues(platforms)
     for platform_name, platform_tasks in platform_grouped.items():
@@ -94,9 +108,11 @@ def load_tasks(task_path: Path) -> list[ClientTaskConfig]:
         ct_cfg_err = v_err
 
     try:
-        return generate_configs(ClientTaskGroupConfig.model_validate(data))
+        ctg = ClientTaskGroupConfig.model_validate(data)
+        return generate_configs(ctg)
     except ValidationError as v_err:
         print(ct_cfg_err)
+        print("****")
         print(v_err)
         logger.error("Task file cannot be parsed neither as TaskConfig nor as TaskGroupConfig")
         return []
@@ -108,20 +124,24 @@ def check_new_client_tasks() -> list[str]:
     """
     added_task = []
     for file in CLIENTS_TASKS_PATH.glob("*.json"):
+        # create collection_task models
         tasks = load_tasks(file)
         all_added = True
         for task in tasks:
-            processed = db_funcs.add_db_collection_task(task)
+            platform_db_mgmt = PlatformDB(task.platform)
+            processed = platform_db_mgmt.add_db_collection_task(task)
             if processed:
                 added_task.append(task.task_name)
             else:
                 all_added = False
 
+            main_db_add_new_db(task.platform, platform_db_mgmt.db_config.connection_string)
+
         # todo only move added tasks?
         if all_added and BIG5_CONFIG.moved_processed_tasks:
             file.rename(PROCESSED_TASKS_PATH / file.name)
         else:
-            logger.debug(f"task of file exists already: {file.name}")
+            logger.warning(f"task of file exists already: {file.name}")
     logger.info(f"new tasks: # {len(added_task)}")
     logger.debug(f"new tasks: # {[t for t in  added_task]}")
     return added_task
@@ -134,6 +154,13 @@ def get_platforms_task_queues(platforms: Optional[Sequence[str]] = None) -> dict
     :param platforms:
     :return: a dict {platform_name: list[task]}
     """
+    platforms_d_models = main_db_get_all_platforms()
+    for platform in platforms_d_models:
+        if platform not in platforms:
+            continue
+
+
+
     tasks = db_funcs.get_task_queue(platforms)
     platform_grouped: dict[str, list[DBCollectionTask]] = {}
     for task in tasks:

@@ -1,10 +1,9 @@
 from src.clients.clients_main import check_new_client_tasks, progress_tasks
-from src.db.db_session import init_db
 
 
 def main():
-    init_db()
-    check_new_client_tasks()
+    #init_db()
+    #check_new_client_tasks()
     progress_tasks()
     # test:
     """

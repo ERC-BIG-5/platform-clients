@@ -6,23 +6,46 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_utils import database_exists, create_database, drop_database
 
+from src.const import BASE_DATA_PATH
+from src.db.db_models import Base
+
 
 class DatabaseConfig:
-    def __init__(self, db_type: str, connection_string: str, base_model, reset_db: bool = False,
+    def __init__(self, db_type: str, connection_string: str, reset_db: bool = False,
                  db_name: Optional[str] = None):
         self.db_type = db_type
         self.connection_string = f"sqlite:///{connection_string}" if db_type == "sqlite" and not connection_string.startswith(
             "sqlite:///") else connection_string
-        self.base_model = base_model
         self.reset_db = reset_db
+        # todo: refactor. for postgres...
         self.db_name = db_name
+
+    @classmethod
+    def get_main_db_config(cls) -> "DatabaseConfig":
+        return DatabaseConfig("sqlite", (BASE_DATA_PATH / "main.sqlite").as_posix())
 
 
 class DatabaseManager:
+
+    __databases: dict[str, "DatabaseManager"] = {}
+
+    def __new__(cls, *args, **kwargs) -> "DatabaseManager":
+        instance = super().__new__(cls)
+        assert isinstance(args[0], DatabaseConfig)
+        config:DatabaseConfig = args[0]
+        existing_db_mgmt = cls.__databases.get(config.connection_string)
+        if existing_db_mgmt:
+            return existing_db_mgmt
+        else:
+            cls.__databases[config.connection_string] = instance
+            return DatabaseManager(config)
+
     def __init__(self, config: DatabaseConfig):
         self.config = config
         self.engine = self._create_engine()
         self.Session = sessionmaker(self.engine)
+
+        self.init_database()
 
         if config.db_type == "sqlite":
             event.listen(self.engine, 'connect', self._sqlite_on_connect)
@@ -45,7 +68,7 @@ class DatabaseManager:
                 return
 
         create_database(self.config.connection_string)
-        self.config.base_model.metadata.create_all(self.engine)
+        Base.metadata.create_all(self.engine)
 
     def init_database(self) -> None:
         """Initialize database, optionally resetting if configured."""
@@ -60,7 +83,7 @@ class DatabaseManager:
 
             if not database_exists(self.engine.url):
                 create_database(self.engine.url)
-                self.config.base_model.metadata.create_all(self.engine)
+                Base.metadata.create_all(self.engine)
 
     @contextmanager
     def get_session(self):
@@ -85,32 +108,3 @@ class AsyncDatabaseManager(DatabaseManager):
     async def get_async_session(self) -> AsyncSession:
         return self.async_session()
 
-
-# Usage example:
-"""
-# PostgreSQL Configuration
-postgres_config = DatabaseConfig(
-    db_type="postgres",
-    connection_string="postgresql://user:pass@localhost:5432/mydb",
-    base_model=Base,
-    reset_db=True,
-    db_name="mydb"
-)
-
-# SQLite Configuration
-sqlite_config = DatabaseConfig(
-    db_type="sqlite",
-    connection_string=f"sqlite:///{Path('data/db.sqlite')}",
-    base_model=Base,
-    reset_db=False
-)
-
-# Create manager instance
-db = DatabaseManager(postgres_config)  # or sqlite_config
-db.init_database()
-
-# Use in synchronous context
-with db.get_session() as session:
-    user = User(name="John")
-    session.add(user)
-"""

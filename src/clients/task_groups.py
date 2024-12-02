@@ -50,7 +50,8 @@ def generate_configs(config: ClientTaskGroupConfig) -> list[ClientTaskConfig]:
             concrete_config = {
                 "task_name": f"{config.group_prefix}_{task_no}",
                 "collection_config": conf,
-                "platform": config.platform
+                "platform": config.platform,
+                "database": config.database,
             }
             concrete_configs.append(ClientTaskConfig.model_validate(concrete_config))
             task_no += 1

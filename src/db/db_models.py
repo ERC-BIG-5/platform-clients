@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Type, TypedDict
 
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Enum, func, UniqueConstraint
 from sqlalchemy import Enum as SQLAlchemyEnum
@@ -58,7 +59,8 @@ class DBCollectionTask(Base):
     added_items: Mapped[int] = mapped_column(Integer, nullable=True)
     # in millis
     collection_duration: Mapped[int] = mapped_column(Integer, nullable=True)
-    status: Mapped[CollectionStatus] = mapped_column(SQLAlchemyEnum(CollectionStatus), nullable=False, default=CollectionStatus.INIT)
+    status: Mapped[CollectionStatus] = mapped_column(SQLAlchemyEnum(CollectionStatus), nullable=False,
+                                                     default=CollectionStatus.INIT)
     time_added: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
     def __repr__(self) -> str:
@@ -94,3 +96,25 @@ class DBPost(Base):
 
     comments: Mapped[list[DBComment]] = relationship(back_populates="post")
 
+
+class DBPlatformDatabase(Base):
+    __tablename__ = 'platform_databases'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    platform: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
+    connection_str: Mapped[str] = mapped_column(String(), nullable=False)
+
+
+M_DBPlatformDatabase = TypedDict("M_DBPlatformDatabase",
+                                 {
+                                     "id": int,
+                                     "platform": str,
+                                     "connection_str": str
+                                 })
+
+
+def db_m2dict(item: Base) -> dict:
+    return {
+        column.key: getattr(item, column.key)
+        for column in type(item).__table__.columns
+    }

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator,ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.const import CollectionStatus, ENV_FILE_PATH
@@ -28,8 +28,8 @@ class ClientTaskConfig(BaseModel):
     model_config = {'extra': "forbid"}
     task_name: str
     id: Optional[int] = Field(None, init=False)
-
     platform: str
+    database: Optional[str]  # default the same as platform
     collection_config: CollectConfig
     client_config: Optional[ClientConfig] = Field(default_factory=ClientConfig)
     #
@@ -39,15 +39,15 @@ class ClientTaskConfig(BaseModel):
     status: CollectionStatus = Field(CollectionStatus.INIT, init=False)
     time_added: Optional[datetime] = Field(None, init=False)
 
-
     def __repr__(self):
         return f"Collection-Task: {self.task_name} ({self.platform})"
 
-class TimeConfig(BaseModel):
 
+class TimeConfig(BaseModel):
     start: str  # ISO format timestamp
     end: str  # ISO format timestamp
     interval: dict[str, int]  # maps directly to timedelta kwargs
+
 
 class ClientTaskGroupConfig(BaseModel):
     # one file, many tasks
@@ -56,8 +56,22 @@ class ClientTaskGroupConfig(BaseModel):
     id: Optional[int] = Field(None, init=False)
     time_config: TimeConfig
     static_params: dict[str, Any]  # Parameters that stay constant
-    variable_params: dict[str, list[Any]] = Field(default_factory=dict) # Parameters to permute
+    variable_params: dict[str, list[Any]] = Field(default_factory=dict)  # Parameters to permute
+    database: Optional[str] = Field("")  # default the same as platform
 
+    # todo. why is this not called?!
+    @field_validator("database", mode="before")
+    @classmethod
+    def set_database(cls, v, info: ValidationInfo) -> str:
+        if v is None:
+            return info.data["platform"]
+        return v
+
+    @model_validator(mode="after")
+    def validate_model(cls, model: "ClientTaskGroupConfig"):
+        if not model.database:
+            model.database = model.platform
+        return model
 
 class BaseEnvSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH,
