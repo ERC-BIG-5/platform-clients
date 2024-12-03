@@ -2,8 +2,10 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from tools.files import read_data
 
 PROJECT_PATH = Path("/home/rsoleyma/projects/platforms-clients")
 BASE_DATA_PATH = PROJECT_PATH / "data"
@@ -22,13 +24,18 @@ for dir in MAIN_DIRS:
 
 class Big5Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
-
-    db_type: Literal["sqlite"] = Field(alias="DB_TYPE", default="sqlite")
+    run_config_file_name: str = Field(alias="RUN_CONFIG")
     moved_processed_tasks: bool = Field(alias="MOVE_PROCESSED_TASKS", default=True)
+    # not sure anymore
+    db_type: Literal["sqlite"] = Field(alias="DB_TYPE", default="sqlite")
     reset_db: bool = Field(alias="RESET_DB", default=False)
 
 
+
+
 BIG5_CONFIG = Big5Config()
+RUN_CONFIG = read_data(BASE_DATA_PATH / "_RUN_CONFIG" / BIG5_CONFIG.run_config_file_name)
+
 
 
 class CollectionStatus(Enum):
@@ -41,3 +48,4 @@ class CollectionStatus(Enum):
 
 class PostType(Enum):
     REGULAR = auto()
+

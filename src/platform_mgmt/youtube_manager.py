@@ -22,7 +22,7 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
     def _create_client(self, config: ClientConfig) -> YoutubeClient:
         """Create and configure YouTube client"""
         # todo
-        if config and (not config.auth_config or 'GOOGLE_API_KEY' not in config.auth_config):
+        if config and config.auth_config and 'GOOGLE_API_KEY' not in config.auth_config:
             raise ValueError("YouTube client requires GOOGLE_API_KEY in auth_config")
         return YoutubeClient(config)
 

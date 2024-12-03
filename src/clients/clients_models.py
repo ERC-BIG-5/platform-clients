@@ -78,3 +78,6 @@ class BaseEnvSettings(BaseSettings):
                                       case_sensitive=True,
                                       env_file_encoding='utf-8',
                                       extra='allow')
+
+class RunConfigModel(BaseModel):
+    clients: dict[str, ClientConfig] = Field(default_factory=dict)

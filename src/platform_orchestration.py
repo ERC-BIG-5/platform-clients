@@ -1,8 +1,8 @@
 import asyncio
 from typing import Dict, Type
 
-
 from src.clients.clients_models import ClientConfig
+from src.const import RUN_CONFIG
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
 from src.db.db_models import DBPlatformDatabase
 from src.db.model_conversion import PlatformDatabaseModel
@@ -34,13 +34,14 @@ class PlatformOrchestrator:
         registered_platforms = self._get_registered_platforms()
 
         for platform_db in registered_platforms:
-            if platforms and platform_db.platform not in platforms:
+            platform_name = platform_db.platform
+            if platforms and platform_name not in platforms:
                 continue
 
             # Get platform-specific manager class
-            manager_class = PLATFORM_MANAGERS.get(platform_db.platform)
+            manager_class = PLATFORM_MANAGERS.get(platform_name)
             if not manager_class:
-                logger.warning(f"No manager implementation found for platform: {platform_db.platform}")
+                logger.warning(f"No manager implementation found for platform: {platform_name}")
                 continue
 
             # Create database config for platform
@@ -51,19 +52,19 @@ class PlatformOrchestrator:
 
             # todo. bring back
             # Create client config for platform
-            #client_config = ClientConfig()  # Load from environment or config
-
+            client_config = ClientConfig.model_validate(
+                RUN_CONFIG["clients"][platform_name])  # Load from environment or config
             # Initialize platform manager
             try:
                 manager = manager_class(
-                    platform_name=platform_db.platform,
+                    platform_name=platform_name,
                     db_config=db_config,
-                    client_config=None
+                    client_config=client_config,
                 )
-                self.platform_managers[platform_db.platform] = manager
-                logger.info(f"Initialized manager for platform: {platform_db.platform}")
+                self.platform_managers[platform_name] = manager
+                logger.info(f"Initialized manager for platform: {platform_name}")
             except Exception as e:
-                logger.error(f"Failed to initialize manager for {platform_db.platform}: {str(e)}")
+                logger.error(f"Failed to initialize manager for {platform_name}: {str(e)}")
 
     async def progress_tasks(self, platforms: list[str] = None):
         """Progress tasks for specified platforms or all platforms"""
