@@ -62,37 +62,6 @@ def get_platform_client(platform_name: str, config: ClientConfig) -> AbstractCli
         # todo, catch missing platform
         return setup_client(platform_name, config)
 
-
-def progress_tasks(platforms: list[str] = None) -> None:
-    """
-    Progress all tasks specific (or all) clients
-    :param platforms: Select the clients (or leave None for all)
-    TODO, this is synchronously, which we dont want in the end
-    :return:
-    """
-    platforms_d_models = main_db_get_all_platforms()
-    for platform in platforms_d_models:
-        if platform not in platforms:
-            continue
-        tasks = [ClientTaskConfig.model_validate(db_task, from_attributes=True)
-                 for db_task in platform_tasks]
-        client = get_platform_client(platform_name, tasks[0].client_config)
-        client.add_tasks(tasks)
-        client.continue_tasks()
-
-
-    logger.debug("progressing client tasks")
-    platform_grouped = get_platforms_task_queues(platforms)
-    for platform_name, platform_tasks in platform_grouped.items():
-        # this is just adding one at a time
-        # convert to platform specific task
-        tasks = [ClientTaskConfig.model_validate(db_task, from_attributes=True)
-                 for db_task in platform_tasks]
-        client = get_platform_client(platform_name, tasks[0].client_config)
-        client.add_tasks(tasks)
-        client.continue_tasks()
-
-
 def load_tasks(task_path: Path) -> list[ClientTaskConfig]:
     """
     Load an validate a task file

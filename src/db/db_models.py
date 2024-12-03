@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column, declarative_base
 
 from src.clients.clients_models import CollectionStatus
 from src.const import PostType
+from src.db.model_conversion import PlatformDatabaseModel
 
 Base = declarative_base()
 
@@ -62,6 +63,7 @@ class DBCollectionTask(Base):
     status: Mapped[CollectionStatus] = mapped_column(SQLAlchemyEnum(CollectionStatus), nullable=False,
                                                      default=CollectionStatus.INIT)
     time_added: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    database: Mapped[str] = mapped_column(String(20), nullable=True)
 
     def __repr__(self) -> str:
         return f"CollectionTask: '{self.task_name}' / {self.platform}. ({self.status.name})"
@@ -104,6 +106,8 @@ class DBPlatformDatabase(Base):
     platform: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
     connection_str: Mapped[str] = mapped_column(String(), nullable=False)
 
+    def model(self)-> PlatformDatabaseModel:
+        return PlatformDatabaseModel.from_orm(self)
 
 M_DBPlatformDatabase = TypedDict("M_DBPlatformDatabase",
                                  {

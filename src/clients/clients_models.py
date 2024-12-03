@@ -25,11 +25,11 @@ class ClientConfig(BaseModel):
 
 
 class ClientTaskConfig(BaseModel):
-    model_config = {'extra': "forbid"}
+    model_config = {'extra': "forbid", "from_attributes": True}
     task_name: str
     id: Optional[int] = Field(None, init=False)
     platform: str
-    database: Optional[str]  # default the same as platform
+    database: Optional[str] = None # default the same as platform
     collection_config: CollectConfig
     client_config: Optional[ClientConfig] = Field(default_factory=ClientConfig)
     #

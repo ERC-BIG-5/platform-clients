@@ -25,7 +25,7 @@ logger = get_b5_logger(__file__)
 
 
 class GoogleAPIKeySetting(BaseSettings):
-    GOOGLE_API_KEYS: list[SecretStr]
+    GOOGLE_API_KEYS: SecretStr
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
 
 
@@ -278,7 +278,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             self.has_keys_available = False
             return False
         self.api_key_index = self.api_key_index + 1
-        API_KEY = self.settings.GOOGLE_API_KEYS[self.api_key_index].get_secret_value()
+        API_KEY = self.settings.GOOGLE_API_KEYS.get_secret_value()
         self.client = build('youtube', 'v3', developerKey=API_KEY)
         return True
 
