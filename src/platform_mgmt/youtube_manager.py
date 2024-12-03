@@ -1,9 +1,10 @@
-from typing import Any, List
+from asyncio import sleep
 from datetime import datetime
 
+from src.clients.clients_models import ClientConfig, ClientTaskConfig
 from src.clients.instances.youtube_client import YoutubeClient
-from src.clients.clients_models import ClientConfig, CollectConfig, ClientTaskConfig
 from src.const import CollectionStatus
+from src.db import db_funcs
 from src.db.db_models import DBPost, DBUser, DBCollectionTask
 from src.misc.project_logging import get_b5_logger
 from src.platform_manager import PlatformManager
@@ -21,7 +22,6 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
 
     def _create_client(self, config: ClientConfig) -> YoutubeClient:
         """Create and configure YouTube client"""
-        # todo
         if config and config.auth_config and 'GOOGLE_API_KEY' not in config.auth_config:
             raise ValueError("YouTube client requires GOOGLE_API_KEY in auth_config")
         return YoutubeClient(config)
@@ -60,28 +60,46 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
                     user = self.client.create_user_entry(item['channel_data'])
                     users.add(user)
 
-            # Store in database
-            with self.db_mgmt.get_session() as session:
-                # Add users first to establish relationships
-                session.add_all(users)
-                session.flush()
+                # Insert data into database
+                self.insert_users(users)
+                num_posts_added = self.insert_posts(posts)
 
-                # Add posts
-                session.add_all(posts)
-
-                # Update task status
+                # Update task status and statistics
                 duration = (datetime.now() - start_time).total_seconds()
-                task_record = session.query(DBCollectionTask).get(task.id)
-                task_record.status = CollectionStatus.DONE
-                task_record.found_items = len(collected_items)
-                task_record.added_items = len(posts)
-                task_record.collection_duration = int(duration * 1000)
+                with self.db_mgmt.get_session() as session:
+                    task_record = session.query(DBCollectionTask).get(task.id)
+                    task_record.status = CollectionStatus.DONE
+                    task_record.found_items = len(collected_items)
+                    task_record.added_items = num_posts_added
+                    task_record.collection_duration = int(duration * 1000)
+                    session.commit()
 
-                session.commit()
+                # Handle rate limiting
+                if self.client.request_delay:
+                    await sleep(self.client.request_delay)
 
-            return posts
+                logger.info(f"Task '{task.task_name}' completed: {num_posts_added}/{len(collected_items)} posts added")
+                return posts
 
         except Exception as e:
             logger.error(f"Error executing YouTube task {task.task_name}: {str(e)}")
             self._update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
+
+    def insert_users(self, users: set[DBUser]) -> None:
+        """Insert unique users/channels into database"""
+        if not users:
+            return
+
+        with self.db_mgmt.get_session() as session:
+            session.add_all(users)
+            session.commit()
+
+    def insert_posts(self, posts: list[DBPost]) -> int:
+        """Insert posts into database and return number of successfully added posts"""
+        if not posts:
+            return 0
+
+        return db_funcs.submit_posts(posts, self.db_mgmt)
+
+

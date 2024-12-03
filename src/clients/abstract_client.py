@@ -2,12 +2,15 @@ import asyncio
 import inspect
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import TypeVar
+from typing import TypeVar, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel
 
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
 from src.db.db_models import DBPost, DBUser
+
+if TYPE_CHECKING:
+    from src.platform_manager import PlatformManager
 
 TClientConfig = TypeVar("TClientConfig", bound=BaseModel)
 PostEntry = TypeVar("PostEntry")
@@ -19,6 +22,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
     def __init__(self, config: ClientConfig):
         self.config = config
         self._task_queue: list[ClientTaskConfig] = []
+        self.manager: Optional["PlatformManager"]
 
 
     @abstractmethod

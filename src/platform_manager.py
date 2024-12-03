@@ -25,6 +25,7 @@ class PlatformManager(Generic[T_Client], ABC):
         self.platform_name = platform_name
         self.db_mgmt = DatabaseManager(db_config)
         self.client = self._create_client(client_config)
+        self.client.manager = self
         self._active_tasks: list[ClientTaskConfig] = []
         self._client_setup = False
 

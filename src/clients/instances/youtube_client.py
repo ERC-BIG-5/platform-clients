@@ -11,13 +11,11 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from pydantic import SecretStr, BaseModel, Field, field_validator, field_serializer
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from time import sleep
 
 from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings, ClientConfig
 from src.const import ENV_FILE_PATH, PostType, CollectionStatus, CLIENTS_DATA_PATH
 from src.db import db_funcs
-from src.db.db_funcs import submit_posts, task_done
 from src.db.db_models import DBUser, DBPost
 from src.misc.project_logging import get_b5_logger
 
@@ -327,16 +325,8 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             # raise ValueError("Could not fetch data")
             db_funcs.set_task_status(task.id, CollectionStatus.PAUSED)
             return False
-        posts: list[DBPost] = [self.create_post_entry(post, task) for post in result]
-        num_posts = submit_posts(posts)
 
-        task_done(task)
-        sleep(self.request_delay)
-        db_funcs.set_task_status(task.id, CollectionStatus.DONE,
-                                 len(result),
-                                 num_posts,
-                                 duration)
-        logger.info(f"{self.platform_name} task '{task.task_name}' finished")
+        #self.manager.insert_posts
         return True
 
     async def collect(self, config: YoutubeSearchParameters, generic_config: CollectConfig) -> list[dict]:

@@ -26,9 +26,9 @@ def filter_duplicate_post_urls(posts: list[DBPost]) -> list[DBPost]:
     return accepted_posts
 
 
-def filter_posts_with_existing_post_urls(posts: list[DBPost]) -> list[DBPost]:
+def filter_posts_with_existing_post_urls(posts: list[DBPost],db_mgmt: DatabaseManager) -> list[DBPost]:
     post_urls = [p.post_url for p in posts]
-    with Session() as session:
+    with db_mgmt.get_session() as session:
         query = select(DBPost.post_url).where(DBPost.post_url.in_(post_urls))
         found_post_urls = session.execute(query).scalars().all()
         logger.debug(f"filtering posts with urls: {found_post_urls}")
@@ -37,7 +37,7 @@ def filter_posts_with_existing_post_urls(posts: list[DBPost]) -> list[DBPost]:
 
 def submit_posts(posts: list[DBPost], db_mgmt: DatabaseManager) -> int:
     posts = filter_duplicate_post_urls(posts)
-    posts = filter_posts_with_existing_post_urls(posts)
+    posts = filter_posts_with_existing_post_urls(posts, db_mgmt)
     logger.debug(f"After filtering duplicates... submitting {len(posts)} posts")
 
     if posts:
