@@ -12,8 +12,8 @@ from src.misc.project_logging import get_b5_logger
 logger = get_b5_logger(__file__)
 
 
-def get_task(task_name: str) -> DBCollectionTask:
-    return session.query(DBCollectionTask).where(DBCollectionTask.task_name == task_name)
+# def get_task(task_name: str) -> DBCollectionTask:
+#     return session.query(DBCollectionTask).where(DBCollectionTask.task_name == task_name)
 
 
 def filter_duplicate_post_urls(posts: list[DBPost]) -> list[DBPost]:

@@ -1,11 +1,12 @@
-from typing import Any, List
 from datetime import datetime
+
 import time
 
-from src.clients.instances.twitter_client import TwitterClient
-from src.clients.clients_models import ClientConfig, CollectConfig, ClientTaskConfig
+# from src.clients.instances.twitter_client import TwitterClient
+from src.clients.clients_models import ClientConfig, ClientTaskConfig
+from src.clients.instances.twitter_client_gen import TwitterClient
 from src.const import CollectionStatus
-from src.db.db_models import DBPost, DBUser, DBCollectionTask
+from src.db.db_models import DBPost, DBCollectionTask
 from src.misc.project_logging import get_b5_logger
 from src.platform_manager import PlatformManager
 
@@ -25,10 +26,17 @@ class TwitterManager(PlatformManager[TwitterClient]):
         self.rate_limit_window = 900  # 15 minutes in seconds
         self.rate_limit_requests = 180  # Requests per window
         self.request_timestamps: list[float] = []
+        self._accounts_initialized = False
+
+
+    async def _ensure_accounts_initialized(self):
+        if not self._accounts_initialized:
+            await self.client.initialize_auth()
+            self._accounts_initialized = True
 
     def _create_client(self, config: ClientConfig) -> TwitterClient:
         """Create and configure Twitter client"""
-        if not config.auth_config or not all(k in config.auth_config for k in
+        if config and config.auth_config and not all(k in config.auth_config for k in
                                              ['TWITTER_API_KEY', 'TWITTER_API_SECRET']):
             raise ValueError("Twitter client requires TWITTER_API_KEY and TWITTER_API_SECRET in auth_config")
         return TwitterClient(config)
@@ -63,6 +71,7 @@ class TwitterManager(PlatformManager[TwitterClient]):
             self._update_task_status(task.id, CollectionStatus.RUNNING)
             start_time = datetime.now()
 
+            await self._ensure_accounts_initialized()
             # Twitter-specific config transformation
             twitter_config = self.client.transform_config(task.collection_config)
 

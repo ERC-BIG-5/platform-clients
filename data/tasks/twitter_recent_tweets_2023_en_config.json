@@ -1,0 +1,15 @@
+{
+  "platform": "twitter",
+  "task_name": "2023_en_recent_tweets_test1",
+  "collection_config": {
+    "query": "",
+    "lang": "en",
+    "filter_replies": true,
+    "filter_quotes": true,
+    "from_time": "2023-01-01T00:00:00Z",
+    "until_time": "2023-01-24T00:00:00Z",
+    "limit": 20
+  },
+  "test": true,
+  "overwrite": true
+}

@@ -52,6 +52,8 @@ class PlatformOrchestrator:
 
             # todo. bring back
             # Create client config for platform
+            # todo: does it always need to be there
+            # bind configs to tasks?
             client_config = ClientConfig.model_validate(
                 RUN_CONFIG["clients"][platform_name])  # Load from environment or config
             # Initialize platform manager
@@ -64,6 +66,7 @@ class PlatformOrchestrator:
                 self.platform_managers[platform_name] = manager
                 logger.info(f"Initialized manager for platform: {platform_name}")
             except Exception as e:
+                raise e
                 logger.error(f"Failed to initialize manager for {platform_name}: {str(e)}")
 
     async def progress_tasks(self, platforms: list[str] = None):

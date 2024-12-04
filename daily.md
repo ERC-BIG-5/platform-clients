@@ -23,3 +23,11 @@ just redo 2023 youtube for the right db
   - main db, go through all platforms, 
   - client db:
     - check tasks
+
+### 3.12
+
+reworked the the clients, management and platform mgmt. 
+
+### 4.12
+
+starting working on updates twitter_client

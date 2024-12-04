@@ -25,7 +25,14 @@ class TwitterConfig(BaseSettings):
 
 class TwitterClient[TwitterConfig,Tweet](AbstractClient):
 
+    def transform_config(self, abstract_config: CollectConfig) -> TClientConfig:
+        pass
 
+    def continue_tasks(self):
+        pass
+
+    def continue_task(self, task: ClientTaskConfig) -> bool:
+        pass
 
     def __init__(self, config: TwitterConfig):
         super().__init__(config)

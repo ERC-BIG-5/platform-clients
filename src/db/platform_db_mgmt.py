@@ -1,3 +1,6 @@
+from sqlite3 import IntegrityError
+
+import sqlalchemy
 from sqlalchemy import exists
 
 from src.const import BASE_DATA_PATH
@@ -37,10 +40,10 @@ class PlatformDB:
         task_name = collection_task.task_name
         exists_and_overwrite = False
         if self.check_task_name_exists(task_name):
-            self.logger.info(f"client collection task exists already: {task_name}")
             if collection_task.test and collection_task.overwrite:
                 exists_and_overwrite = True
             else:
+                self.logger.info(f"client collection task exists already: {task_name}")
                 return False
         with self.db_mgmt.get_session() as session:
             task = DBCollectionTask(
@@ -52,7 +55,13 @@ class PlatformDB:
                 self.logger.debug(f"Collection task set to test and overwrite. overwriting existing task")
                 prev = session.query(DBCollectionTask).where(DBCollectionTask.task_name == task_name)
                 task.id = task.id
-                prev.delete()
+                try:
+                    prev.delete()
+                except sqlalchemy.exc.IntegrityError as e:
+                    session.rollback()  # Rollback changes on error
+                    self.logger.error("Failed to delete entry: %s", e)
+                    # Handle or re-raise the exception as needed
+                    return False
 
             session.add(task)
             session.commit()

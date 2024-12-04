@@ -11,8 +11,8 @@ from src.db.db_mgmt import DatabaseConfig, DatabaseManager
 from src.db.db_models import DBPost, Base
 from sqlalchemy import ScalarResult
 
-conf = DatabaseConfig("sqlite", (BASE_DATA_PATH / "twitter.sqlite").as_posix(), Base)
-db = DatabaseManager(conf)
+# conf = DatabaseConfig("sqlite", (BASE_DATA_PATH / "twitter.sqlite").as_posix())
+# db = DatabaseManager(conf)
 
 
 def get_posts_with_custom_conditions(platform: str,

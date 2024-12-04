@@ -7,7 +7,8 @@ from pydantic_core import ValidationError
 
 from src.clients.abstract_client import AbstractClient
 from src.clients.clients_models import ClientTaskConfig, ClientConfig, ClientTaskGroupConfig
-from src.clients.instances.twitter_client import TwitterClient
+from src.clients.instances.twitter_client_gen import TwitterClient
+#from src.clients.instances.twitter_client import TwitterClient
 from src.clients.instances.youtube_client import YoutubeClient
 from src.clients.task_groups import generate_configs
 from src.const import CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH

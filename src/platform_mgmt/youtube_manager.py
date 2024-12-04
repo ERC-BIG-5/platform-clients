@@ -24,6 +24,7 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
         """Create and configure YouTube client"""
         if config and config.auth_config and 'GOOGLE_API_KEY' not in config.auth_config:
             raise ValueError("YouTube client requires GOOGLE_API_KEY in auth_config")
+
         return YoutubeClient(config)
 
     async def execute_task(self, task: ClientTaskConfig) -> list[DBPost]:
@@ -62,24 +63,25 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
 
                 # Insert data into database
                 self.insert_users(users)
-                num_posts_added = self.insert_posts(posts)
 
-                # Update task status and statistics
-                duration = (datetime.now() - start_time).total_seconds()
-                with self.db_mgmt.get_session() as session:
-                    task_record = session.query(DBCollectionTask).get(task.id)
-                    task_record.status = CollectionStatus.DONE
-                    task_record.found_items = len(collected_items)
-                    task_record.added_items = num_posts_added
-                    task_record.collection_duration = int(duration * 1000)
-                    session.commit()
+            num_posts_added = self.insert_posts(posts)
 
-                # Handle rate limiting
-                if self.client.request_delay:
-                    await sleep(self.client.request_delay)
+            # Update task status and statistics
+            duration = (datetime.now() - start_time).total_seconds()
+            with self.db_mgmt.get_session() as session:
+                task_record = session.query(DBCollectionTask).get(task.id)
+                task_record.status = CollectionStatus.DONE
+                task_record.found_items = len(collected_items)
+                task_record.added_items = num_posts_added
+                task_record.collection_duration = int(duration * 1000)
+                session.commit()
 
-                logger.info(f"Task '{task.task_name}' completed: {num_posts_added}/{len(collected_items)} posts added")
-                return posts
+            # Handle rate limiting
+            if self.client.request_delay:
+                await sleep(self.client.config.request_delay)
+
+            logger.info(f"Task '{task.task_name}' completed: {num_posts_added}/{len(collected_items)} posts added")
+            return posts
 
         except Exception as e:
             logger.error(f"Error executing YouTube task {task.task_name}: {str(e)}")

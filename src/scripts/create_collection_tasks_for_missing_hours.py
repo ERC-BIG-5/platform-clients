@@ -8,7 +8,7 @@ from src.misc.helper import get_posts_with_custom_conditions
 import pandas as pd
 
 # todo. we have to use platform specific databases
-conf = DatabaseConfig("sqlite", (BASE_DATA_PATH / "db.sqlite").as_posix(), Base)
+conf = DatabaseConfig("sqlite", (BASE_DATA_PATH / "youtube.sqlite").as_posix())
 db = DatabaseManager(conf)
 
 

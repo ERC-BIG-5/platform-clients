@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column, declarative_base
 
 from src.clients.clients_models import CollectionStatus
 from src.const import PostType
-from src.db.model_conversion import PlatformDatabaseModel
+from src.db.model_conversion import PlatformDatabaseModel, CollectionTaskModel, PostModel
 
 Base = declarative_base()
 
@@ -68,6 +68,9 @@ class DBCollectionTask(Base):
     def __repr__(self) -> str:
         return f"CollectionTask: '{self.task_name}' / {self.platform}. ({self.status.name})"
 
+    def model(self) -> CollectionTaskModel:
+        return CollectionTaskModel.from_orm(self)
+
 
 class DBPost(Base):
     __tablename__ = 'post'
@@ -88,6 +91,8 @@ class DBPost(Base):
 
     # todo: temp nullable
     collection_task_id: Mapped[int] = mapped_column(ForeignKey("collection_task.id"), nullable=True)
+    collection_task: Mapped["DBCollectionTask"] = relationship(backref="posts")
+
     # collection_step: Mapped[int] = mapped_column(Integer, nullable=True)
 
     # user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
@@ -98,6 +103,9 @@ class DBPost(Base):
 
     comments: Mapped[list[DBComment]] = relationship(back_populates="post")
 
+    def model(self) -> PostModel:
+        return PostModel.from_orm(self)
+
 
 class DBPlatformDatabase(Base):
     __tablename__ = 'platform_databases'
@@ -106,8 +114,9 @@ class DBPlatformDatabase(Base):
     platform: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
     connection_str: Mapped[str] = mapped_column(String(), nullable=False)
 
-    def model(self)-> PlatformDatabaseModel:
+    def model(self) -> PlatformDatabaseModel:
         return PlatformDatabaseModel.from_orm(self)
+
 
 M_DBPlatformDatabase = TypedDict("M_DBPlatformDatabase",
                                  {
