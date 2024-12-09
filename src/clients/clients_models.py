@@ -32,6 +32,7 @@ class ClientTaskConfig(BaseModel):
     database: Optional[str] = None # default the same as platform
     collection_config: CollectConfig
     client_config: Optional[ClientConfig] = Field(default_factory=ClientConfig)
+    transient: bool = False # will be deleted after done
     #
     test: bool = False
     overwrite: bool = False
@@ -57,7 +58,11 @@ class ClientTaskGroupConfig(BaseModel):
     time_config: TimeConfig
     static_params: dict[str, Any]  # Parameters that stay constant
     variable_params: dict[str, list[Any]] = Field(default_factory=dict)  # Parameters to permute
+    store_as_group: bool = False
     database: Optional[str] = Field("")  # default the same as platform
+
+    test: bool = False
+    overwrite: bool = False
 
     # todo. why is this not called?!
     @field_validator("database", mode="before")

@@ -7,14 +7,12 @@ from pydantic_core import ValidationError
 
 from src.clients.abstract_client import AbstractClient
 from src.clients.clients_models import ClientTaskConfig, ClientConfig, ClientTaskGroupConfig
-from src.clients.instances.twitter_client_gen import TwitterClient
-#from src.clients.instances.twitter_client import TwitterClient
+from src.clients.instances.twitter_client import TwitterClient
 from src.clients.instances.youtube_client import YoutubeClient
 from src.clients.task_groups import generate_configs
 from src.const import CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH
 from src.db import db_funcs
 from src.db.db_funcs import main_db_add_new_db, main_db_get_all_platforms
-from src.db.db_mgmt import DatabaseManager, DatabaseConfig
 from src.db.db_models import DBCollectionTask
 from src.db.platform_db_mgmt import PlatformDB
 from src.misc.files import get_abs_path, read_data
@@ -63,17 +61,18 @@ def get_platform_client(platform_name: str, config: ClientConfig) -> AbstractCli
         # todo, catch missing platform
         return setup_client(platform_name, config)
 
-def load_tasks(task_path: Path) -> list[ClientTaskConfig]:
+
+def load_tasks(task_path: Path) -> tuple[Optional[ClientTaskGroupConfig], list[ClientTaskConfig]]:
     """
     Load an validate a task file
     :param task_path: absolute or relative path (to CLIENTS_TASKS_PATH)
-    :return: task object
+    :return: task objects, or group (for permanent-storage) and client configs
     """
     abs_task_path = get_abs_path(task_path, CLIENTS_TASKS_PATH)
     data = read_data(abs_task_path)
     ct_cfg_err = None
     try:
-        return [ClientTaskConfig.model_validate(data)]
+        return None, [ClientTaskConfig.model_validate(data)]
     except ValidationError as v_err:
         ct_cfg_err = v_err
 
@@ -85,7 +84,8 @@ def load_tasks(task_path: Path) -> list[ClientTaskConfig]:
         print("****")
         print(v_err)
         logger.error("Task file cannot be parsed neither as TaskConfig nor as TaskGroupConfig")
-        return []
+        return None, []
+
 
 def check_new_client_tasks() -> list[str]:
     """
@@ -95,7 +95,7 @@ def check_new_client_tasks() -> list[str]:
     added_task = []
     for file in CLIENTS_TASKS_PATH.glob("*.json"):
         # create collection_task models
-        tasks = load_tasks(file)
+        group_config, tasks = load_tasks(file)
         all_added = True
         for task in tasks:
             platform_db_mgmt = PlatformDB(task.platform)
@@ -105,7 +105,7 @@ def check_new_client_tasks() -> list[str]:
             else:
                 all_added = False
 
-            main_db_add_new_db(task.platform, platform_db_mgmt.db_config.connection_string)
+            #main_db_add_new_db(task.platform, platform_db_mgmt.db_config.connection_string)
 
         # todo only move added tasks?
         if all_added and BIG5_CONFIG.moved_processed_tasks:
@@ -113,7 +113,7 @@ def check_new_client_tasks() -> list[str]:
         else:
             logger.warning(f"task of file exists already: {file.name}")
     logger.info(f"new tasks: # {len(added_task)}")
-    logger.debug(f"new tasks: # {[t for t in  added_task]}")
+    logger.debug(f"new tasks: # {[t for t in added_task]}")
     return added_task
 
 
@@ -128,8 +128,6 @@ def get_platforms_task_queues(platforms: Optional[Sequence[str]] = None) -> dict
     for platform in platforms_d_models:
         if platform not in platforms:
             continue
-
-
 
     tasks = db_funcs.get_task_queue(platforms)
     platform_grouped: dict[str, list[DBCollectionTask]] = {}

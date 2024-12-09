@@ -1,3 +1,5 @@
+from typing import Optional
+
 import itertools
 from datetime import datetime, timedelta
 
@@ -20,7 +22,7 @@ def generate_timestamps(time_config: TimeConfig) -> list[datetime]:
     return timestamps
 
 
-def generate_configs(config: ClientTaskGroupConfig) -> list[ClientTaskConfig]:
+def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTaskGroupConfig], list[ClientTaskConfig]]:
     """Generate all concrete configurations from the config file."""
     # Load and parse config file
 
@@ -52,8 +54,14 @@ def generate_configs(config: ClientTaskGroupConfig) -> list[ClientTaskConfig]:
                 "collection_config": conf,
                 "platform": config.platform,
                 "database": config.database,
+                "transient": config.store_as_group,
+                "test": config.test,
+                "overwrite":config.overwrite
             }
             concrete_configs.append(ClientTaskConfig.model_validate(concrete_config))
             task_no += 1
 
-    return concrete_configs
+    if config.store_as_group:
+        return config, concrete_configs
+
+    return None, concrete_configs

@@ -2,7 +2,7 @@ from asyncio import sleep
 from datetime import datetime
 
 from src.clients.clients_models import ClientConfig, ClientTaskConfig
-from src.clients.instances.youtube_client import YoutubeClient
+from src.clients.instances.youtube_client import YoutubeClient, GoogleAPIKeySetting
 from src.const import CollectionStatus
 from src.db import db_funcs
 from src.db.db_models import DBPost, DBUser, DBCollectionTask
@@ -24,7 +24,8 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
         """Create and configure YouTube client"""
         if config and config.auth_config and 'GOOGLE_API_KEY' not in config.auth_config:
             raise ValueError("YouTube client requires GOOGLE_API_KEY in auth_config")
-
+        else:
+            config.auth_config = GoogleAPIKeySetting()
         return YoutubeClient(config)
 
     async def execute_task(self, task: ClientTaskConfig) -> list[DBPost]:

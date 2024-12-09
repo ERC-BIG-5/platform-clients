@@ -1,11 +1,10 @@
-from pathlib import Path
-from typing import Optional, Sequence, TypedDict
+from typing import Optional, Sequence
 
 from sqlalchemy import select, exists
 
-from src.const import CollectionStatus, BASE_DATA_PATH
+from src.const import CollectionStatus
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
-from src.db.db_models import DBPost, DBCollectionTask, Base, DBPlatformDatabase, db_m2dict, M_DBPlatformDatabase
+from src.db.db_models import DBPost, DBCollectionTask, DBPlatformDatabase, db_m2dict, M_DBPlatformDatabase
 from src.db.platform_db_mgmt import PlatformDB
 from src.misc.project_logging import get_b5_logger
 

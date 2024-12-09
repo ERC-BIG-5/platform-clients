@@ -2,9 +2,8 @@ from datetime import datetime
 
 import time
 
-# from src.clients.instances.twitter_client import TwitterClient
 from src.clients.clients_models import ClientConfig, ClientTaskConfig
-from src.clients.instances.twitter_client_gen import TwitterClient
+from src.clients.instances.twitter_client import TwitterClient
 from src.const import CollectionStatus
 from src.db.db_models import DBPost, DBCollectionTask
 from src.misc.project_logging import get_b5_logger

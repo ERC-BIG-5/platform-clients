@@ -1,6 +1,7 @@
 import asyncio
 from typing import Dict, Type
 
+from sqlalchemy import select, exists
 from src.clients.clients_models import ClientConfig
 from src.const import RUN_CONFIG
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
@@ -66,8 +67,16 @@ class PlatformOrchestrator:
                 self.platform_managers[platform_name] = manager
                 logger.info(f"Initialized manager for platform: {platform_name}")
             except Exception as e:
-                raise e
                 logger.error(f"Failed to initialize manager for {platform_name}: {str(e)}")
+                raise e
+
+    def add_platform_db(platform: str, connection_str: str):
+        main_db_mgmt = DatabaseManager(DatabaseConfig.get_main_db_config())
+        with main_db_mgmt.get_session() as session:
+            if session.query(exists().where(DBPlatformDatabase.platform == platform)).scalar():
+                return
+            session.add(DBPlatformDatabase(platform=platform, connection_str=connection_str))
+            session.commit()
 
     async def progress_tasks(self, platforms: list[str] = None):
         """Progress tasks for specified platforms or all platforms"""
@@ -83,6 +92,7 @@ class PlatformOrchestrator:
 
         # Execute all platform tasks concurrently
         await asyncio.gather(*platform_tasks)
+
 
 
 # Register platform-specific managers
