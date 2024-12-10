@@ -17,9 +17,6 @@ from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientCo
 from src.const import ENV_FILE_PATH, PostType, CollectionStatus, CLIENTS_DATA_PATH
 from src.db import db_funcs
 from src.db.db_models import DBUser, DBPost
-from src.misc.project_logging import get_b5_logger
-
-logger = get_b5_logger(__file__)
 
 
 class GoogleAPIKeySetting(BaseSettings):

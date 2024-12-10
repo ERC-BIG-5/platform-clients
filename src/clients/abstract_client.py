@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
 from src.db.db_models import DBPost, DBUser
+from tools.project_logging import get_logger
 
 if TYPE_CHECKING:
     from src.platform_manager import PlatformManager
@@ -23,6 +24,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         self.config = config
         self._task_queue: list[ClientTaskConfig] = []
         self.manager: Optional["PlatformManager"]
+        self.logger = get_logger(__file__)
 
 
     @abstractmethod

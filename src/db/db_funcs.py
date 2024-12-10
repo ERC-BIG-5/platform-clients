@@ -6,9 +6,9 @@ from src.const import CollectionStatus
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
 from src.db.db_models import DBPost, DBCollectionTask, DBPlatformDatabase, db_m2dict, M_DBPlatformDatabase
 from src.db.platform_db_mgmt import PlatformDB
-from src.misc.project_logging import get_b5_logger
+from tools.project_logging import get_logger
 
-logger = get_b5_logger(__file__)
+logger = get_logger(__file__)
 
 
 # def get_task(task_name: str) -> DBCollectionTask:

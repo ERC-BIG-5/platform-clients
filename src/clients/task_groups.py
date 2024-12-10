@@ -1,9 +1,14 @@
+from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
 import itertools
-from datetime import datetime, timedelta
+from pydantic_core._pydantic_core import ValidationError
 
 from src.clients.clients_models import TimeConfig, ClientTaskGroupConfig, ClientTaskConfig
+from src.const import CLIENTS_TASKS_PATH
+from src.misc.files import get_abs_path
+from tools.files import read_data
 
 
 def generate_timestamps(time_config: TimeConfig) -> list[datetime]:
@@ -65,3 +70,28 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
         return config, concrete_configs
 
     return None, concrete_configs
+
+
+def load_tasks(task_path: Path) -> tuple[Optional[ClientTaskGroupConfig], list[ClientTaskConfig]]:
+    """
+    Load an validate a task file
+    :param task_path: absolute or relative path (to CLIENTS_TASKS_PATH)
+    :return: task objects, or group (for permanent-storage) and client configs
+    """
+    abs_task_path = get_abs_path(task_path, CLIENTS_TASKS_PATH)
+    data = read_data(abs_task_path)
+    ct_cfg_err = None
+    try:
+        return None, [ClientTaskConfig.model_validate(data)]
+    except ValidationError as v_err:
+        ct_cfg_err = v_err
+
+    try:
+        ctg = ClientTaskGroupConfig.model_validate(data)
+        return generate_configs(ctg)
+    except ValidationError as v_err:
+        print(ct_cfg_err)
+        print("****")
+        print(v_err)
+        logger.error("Task file cannot be parsed neither as TaskConfig nor as TaskGroupConfig")
+        return None, []

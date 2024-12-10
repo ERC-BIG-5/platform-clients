@@ -6,10 +6,8 @@ from src.clients.instances.youtube_client import YoutubeClient, GoogleAPIKeySett
 from src.const import CollectionStatus
 from src.db import db_funcs
 from src.db.db_models import DBPost, DBUser, DBCollectionTask
-from src.misc.project_logging import get_b5_logger
 from src.platform_manager import PlatformManager
 
-logger = get_b5_logger(__file__)
 
 
 class YoutubeManager(PlatformManager[YoutubeClient]):
@@ -81,11 +79,11 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
             if self.client.request_delay:
                 await sleep(self.client.config.request_delay)
 
-            logger.info(f"Task '{task.task_name}' completed: {num_posts_added}/{len(collected_items)} posts added")
+            self.logger.info(f"Task '{task.task_name}' completed: {num_posts_added}/{len(collected_items)} posts added")
             return posts
 
         except Exception as e:
-            logger.error(f"Error executing YouTube task {task.task_name}: {str(e)}")
+            self.logger.error(f"Error executing YouTube task {task.task_name}: {str(e)}")
             self._update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
 

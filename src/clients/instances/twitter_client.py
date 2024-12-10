@@ -1,12 +1,11 @@
-import json
 from asyncio import get_event_loop
+from contextlib import aclosing
+from datetime import datetime
+from typing import Optional, Protocol
 
 import orjson
 import time
-from datetime import datetime
-from typing import Optional, Protocol
-from contextlib import aclosing
-
+from pydantic import Field
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from twscrape import API
@@ -17,9 +16,6 @@ from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvS
 from src.const import ENV_FILE_PATH, PostType, CollectionStatus
 from src.db import db_funcs
 from src.db.db_models import DBPost, DBUser
-from src.misc.project_logging import get_b5_logger
-from pydantic import Field
-logger = get_b5_logger(__file__)
 
 
 class TwitterAuthSettings(BaseSettings):
@@ -67,12 +63,12 @@ class TwitterClient(AbstractClient):
     """
 
     def continue_tasks(self):
-        logger.info(f"{self.platform_name}, continue with task queue")
+        self.logger.info(f"{self.platform_name}, continue with task queue")
         while self._task_queue:
             task: ClientTaskConfig = self._task_queue.pop(0)
             finished = self.continue_task(task)
         # log when they don't all finish
-        logger.info(f"{self.platform_name} all tasks finished")
+        self.logger.info(f"{self.platform_name} all tasks finished")
 
     def continue_task(self, task: ClientTaskConfig) -> bool:
         """
@@ -80,11 +76,11 @@ class TwitterClient(AbstractClient):
         :return: returns true we finished
         """
         task.status = CollectionStatus.RUNNING
-        logger.info(f"continue task: {task.task_name}")
+        self.logger.info(f"continue task: {task.task_name}")
         # while task.has_more():
         # task.update_current_config()
         yt_config = self.transform_config(task.collection_config)
-        logger.debug(f"Getting data: {repr(task)}")
+        self.logger.debug(f"Getting data: {repr(task)}")
         start_time = time.time()
         # todo a more specific type
         result: list[dict] = get_event_loop().run_until_complete(self.collect(yt_config, task.collection_config))

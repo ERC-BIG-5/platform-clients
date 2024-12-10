@@ -8,10 +8,14 @@ from sqlalchemy_utils import database_exists, create_database, drop_database
 
 from src.const import BASE_DATA_PATH
 from src.db.db_models import Base
+from tools.project_logging import get_logger
 
 
 class DatabaseConfig:
-    def __init__(self, db_type: str, connection_string: str, reset_db: bool = False,
+    def __init__(self,
+                 db_type: str,
+                 connection_string: Optional[str],
+                 reset_db: bool = False,
                  db_name: Optional[str] = None):
         self.db_type = db_type
         self.connection_string = f"sqlite:///{connection_string}" if db_type == "sqlite" and not connection_string.startswith(
@@ -42,6 +46,7 @@ class DatabaseManager:
 
     def __init__(self, config: DatabaseConfig):
         self.config = config
+        self.logger = get_logger(__file__)
         self.engine = self._create_engine()
         self.Session = sessionmaker(self.engine)
 
@@ -51,6 +56,7 @@ class DatabaseManager:
             event.listen(self.engine, 'connect', self._sqlite_on_connect)
 
     def _create_engine(self) -> Engine:
+        self.logger.debug(f"creating db engine with {self.config.connection_string}")
         return create_engine(self.config.connection_string)
 
     @staticmethod

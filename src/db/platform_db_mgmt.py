@@ -6,7 +6,7 @@ from sqlalchemy import exists
 from src.const import BASE_DATA_PATH
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
 from src.db.db_models import DBCollectionTask
-from src.misc.project_logging import get_b5_logger
+from tools.project_logging import get_logger
 
 
 class PlatformDB:
@@ -30,7 +30,7 @@ class PlatformDB:
         self.db_config = self.get_platform_default_db(platform)
         self.db_mgmt = DatabaseManager(self.db_config)
         # todo : make platform specific
-        self.logger = get_b5_logger(__file__)
+        self.logger = get_logger(__file__)
 
     def check_task_name_exists(self, task_name: str) -> bool:
         with self.db_mgmt.get_session() as session:

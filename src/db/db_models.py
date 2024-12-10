@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Type, TypedDict
 
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Enum, func, UniqueConstraint
+
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, JSON, Enum, func, UniqueConstraint
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship, Mapped, mapped_column, declarative_base
 
@@ -113,6 +114,7 @@ class DBPlatformDatabase(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     platform: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
     connection_str: Mapped[str] = mapped_column(String(), nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean())
 
     def model(self) -> PlatformDatabaseModel:
         return PlatformDatabaseModel.from_orm(self)

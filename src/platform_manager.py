@@ -7,6 +7,7 @@ from src.clients.clients_models import ClientConfig, ClientTaskConfig
 from src.const import CollectionStatus
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
 from src.db.db_models import DBPost, DBCollectionTask
+from tools.project_logging import get_logger
 
 T_Client = TypeVar('T_Client', bound=AbstractClient)
 
@@ -28,6 +29,7 @@ class PlatformManager(Generic[T_Client], ABC):
         self.client.manager = self
         self._active_tasks: list[ClientTaskConfig] = []
         self._client_setup = False
+        self.logger = get_logger(__name__)
 
     @abstractmethod
     def _create_client(self, config: ClientConfig) -> T_Client:
@@ -121,3 +123,4 @@ class PlatformManager(Generic[T_Client], ABC):
         for task in tasks:
             self._setup_client()
             await self.execute_task(task)
+            pass

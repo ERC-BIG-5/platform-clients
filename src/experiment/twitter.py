@@ -3,21 +3,21 @@ import json
 from contextlib import aclosing
 from datetime import datetime, timedelta
 from random import randint
-
-from time import sleep
 from typing import Optional
 
 import orjson
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from time import sleep
 from twscrape import API
+from twscrape.account import Account
 from twscrape.api import API as TwitterAPI
 
 from src.const import ENV_FILE_PATH, BASE_DATA_PATH
+from src.db.db_mgmt import DatabaseManager
 from src.db.db_models import DBPost
-from src.db.db_session import db_manager, init_db
+from src.db.platform_db_mgmt import PlatformDB
 
 
 class TwitterSetting(BaseSettings):
@@ -39,20 +39,21 @@ MINUTES_OFFSET = timedelta(minutes=7)
 class TwitterClient:
 
     def __init__(self):
-        self.api = self.get_api()
+        self.api = asyncio.run(self.get_api())
+        self.db_mgmt = DatabaseManager(PlatformDB.get_platform_default_db("twitter"))
+
 
     @staticmethod
-    def get_api() -> TwitterAPI:
-        return API()
-
-    async def main(self):
-        api = self.api  # or API("path-to.db") - default is `accounts.db`
-
+    async def get_api() -> TwitterAPI:
+        api =  API()
+        accounts:list[Account] = await api.pool.get_all()
+        #await api.pool.delete_inactive()
         # ADD ACCOUNTS (for CLI usage see BELOW)
         settings = TwitterSetting()
         await api.pool.add_account(settings.TWITTER_USERNAME, settings.TWITTER_PASSWORD.get_secret_value(),
                                    settings.TWITTER_EMAIL, settings.TWITTER_PASSWORD.get_secret_value())
-        await api.pool.login_all()
+        # todo trigger, retry login.
+        # res = await api.pool.login_all()
         return api
 
     async def search(self, q: str):
@@ -62,12 +63,12 @@ class TwitterClient:
 
         tweets = []
 
-        async def process_results(from_: str, until_: str, filter_: Optional[str], max_: int = 10):
+        async def process_results(from_: str, until_: str, filter_: Optional[str], max_: int = 5):
             try:
                 q = f"lang:en since:{from_} until:{until_}"
                 if filter_:
                     q += f" {filter_}"
-                async with aclosing(self.api.search(q)) as gen:
+                async with aclosing(self.api.search(q, limit=5)) as gen:
                     async for tweet in gen:
                         tweets.append(tweet.dict())
                         if len(tweets) >= max_:
@@ -82,10 +83,12 @@ class TwitterClient:
         filter_ = "-filter:replies -filter:quote"
         max_tweets = 5
         await process_results(from_s, until_s, filter_, max_tweets)
+
+        print(f"collected: {len(tweets)} tweets")
         return tweets
 
     def get_last_time(self) -> Optional[datetime]:
-        with db_manager.session_scope() as session:
+        with self.db_mgmt.get_session() as session:
             try:
                 obj: DBPost = session.query(DBPost).order_by(DBPost.id.desc()).first()
                 return obj.date_created
@@ -113,7 +116,8 @@ class TwitterClient:
             all_tweets.extend(await self.test_grab(current_t, until_time_delta))
             current_t += inc
             if len(all_tweets) >= dump_thresh:
-                with db_manager.session_scope() as session:
+                print("dumping tweets to db...")
+                with self.db_mgmt.get_session() as session:
                     for tweet in all_tweets:
                         session.add(DBPost(
                             platform="twitter",
@@ -128,9 +132,13 @@ class TwitterClient:
                             all_tweets.clear()
                             break
                         except IntegrityError as err:
+                            print(err)
                             pass
                 # print(session.execute(select(DBPost)).all())
-            sleep(randint(20,30))
+
+            sleeptime = randint(5,15)
+            print("sleeeping", sleeptime)
+            sleep(sleeptime)
 
 def check_date():
     dates = []
@@ -141,5 +149,4 @@ def check_date():
 
 
 if __name__ == "__main__":
-    init_db()
     asyncio.run(TwitterClient().complete_collect())

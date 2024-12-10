@@ -6,10 +6,8 @@ from src.clients.clients_models import ClientConfig, ClientTaskConfig
 from src.clients.instances.twitter_client import TwitterClient
 from src.const import CollectionStatus
 from src.db.db_models import DBPost, DBCollectionTask
-from src.misc.project_logging import get_b5_logger
 from src.platform_manager import PlatformManager
-
-logger = get_b5_logger(__file__)
+from tools.project_logging import get_logger
 
 
 class TwitterManager(PlatformManager[TwitterClient]):
@@ -26,6 +24,7 @@ class TwitterManager(PlatformManager[TwitterClient]):
         self.rate_limit_requests = 180  # Requests per window
         self.request_timestamps: list[float] = []
         self._accounts_initialized = False
+        self.logger = get_logger(__name__)
 
 
     async def _ensure_accounts_initialized(self):
@@ -52,7 +51,7 @@ class TwitterManager(PlatformManager[TwitterClient]):
         if len(self.request_timestamps) >= self.rate_limit_requests:
             sleep_time = self.request_timestamps[0] + self.rate_limit_window - current_time
             if sleep_time > 0:
-                logger.info(f"Rate limit reached, waiting {sleep_time:.2f} seconds")
+                self.logger.info(f"Rate limit reached, waiting {sleep_time:.2f} seconds")
                 time.sleep(sleep_time)
                 self.request_timestamps.pop(0)
 
