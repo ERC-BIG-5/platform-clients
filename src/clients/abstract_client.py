@@ -24,7 +24,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         self.config = config
         self._task_queue: list[ClientTaskConfig] = []
         self.manager: Optional["PlatformManager"]
-        self.logger = get_logger(__file__)
+        self.logger = get_logger(__name__)
 
 
     @abstractmethod

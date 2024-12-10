@@ -87,7 +87,7 @@ class TwitterClient(AbstractClient):
         accounts = await self.api.pool.get_all()
 
         if any(acc.username == self.settings.username for acc in accounts):
-            logger.debug(f"Account {self.settings.username} already exists")
+            self.logger.debug(f"Account {self.settings.username} already exists")
             return
 
         # Add account credentials

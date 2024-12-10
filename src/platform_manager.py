@@ -93,11 +93,16 @@ class PlatformManager(Generic[T_Client], ABC):
                 posts.append(self.client.create_post_entry(item, task))
                 users.add(self.client.create_user_entry(item))
 
+            with self.db_mgmt.get_session() as session:
+                all_post_ids = [post.platform_id for post in posts]
+                exisiting_ids  =session.query(DBPost.platform_id).filter(DBPost.platform_id.in_(all_post_ids))
+                posts = list(filter(lambda post: post.platform_id not in exisiting_ids, posts))
+
             # Store posts
             with self.db_mgmt.get_session() as session:
-                ## TODO catch duplicates...
                 try:
                     session.add_all(posts)
+
                     # todo ADD USERS
 
                     # Update task status
@@ -115,6 +120,7 @@ class PlatformManager(Generic[T_Client], ABC):
                 except IntegrityError as err:
                     session.rollback()
                     self.logger.error(f"Failed to insert posts into database: {err}")
+            self.logger.info(f"Added {len(posts)} posts to database")
             return posts
 
         except Exception as e:

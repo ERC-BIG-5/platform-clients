@@ -1,11 +1,10 @@
-from asyncio import get_event_loop
+from datetime import datetime
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Literal, Sequence, Union, Protocol
 
 import itertools
 import pyrfc3339
-import time
 import yt_dlp
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -14,8 +13,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
-from src.const import ENV_FILE_PATH, PostType, CollectionStatus, CLIENTS_DATA_PATH
-from src.db import db_funcs
+from src.const import ENV_FILE_PATH, PostType, CLIENTS_DATA_PATH
 from src.db.db_models import DBUser, DBPost
 from tools.project_logging import get_logger
 
@@ -261,6 +259,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         self.client: YoutubeResource = None
         self.request_delay = 0
         self.has_keys_available = True
+        self.logger = get_logger(__name__)
         # todo refactor this into a superclass or interface
         self.path_config = YoutubePathConfig(pn=CLIENTS_DATA_PATH / self.platform_name)
         pass
@@ -359,7 +358,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             videos.append(v)
 
         sorted(videos, key=lambda i: i.get("snippet")["publishedAt"])
-
+        self.logger.info(f"Collected {len(videos)} videos.")
         return videos
 
     def create_post_entry(self, post: dict, task: ClientTaskConfig) -> DBPost:

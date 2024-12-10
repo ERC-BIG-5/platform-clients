@@ -78,12 +78,12 @@ class DBPost(Base):
 
     # this for alembic
     __table_args__ = (
-        UniqueConstraint('post_url', name='uq_post_url'),
+        UniqueConstraint('platform_id', name='uq_platform_id'),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     platform: Mapped[str] = mapped_column(String(20), nullable=False)
-    platform_id: Mapped[str] = mapped_column(String(50), nullable=True, unique=False)
+    platform_id: Mapped[str] = mapped_column(String(50), nullable=True, unique=True)
     post_url: Mapped[str] = mapped_column(String(60), nullable=False)
     date_created: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     post_type: Mapped[PostType] = mapped_column(Enum(PostType), nullable=False, default=PostType.REGULAR)

@@ -1,0 +1,54 @@
+{
+  "platform": "youtube",
+  "group_prefix": "2023_en_all_by_weeks",
+  "static_params": {
+    "limit": 2000,
+    "language": "en",
+    "part": [
+      "snippet",
+      "contentDetails",
+      "status",
+      "statistics",
+      "topicDetails",
+      "localizations"
+    ]
+  },
+  "variable_params": {
+    "order": [
+      "date",
+      "rating",
+      "relevance",
+      "title",
+      "videoCount",
+      "viewCount"
+    ],
+    "safeSearch": [
+      "moderate",
+      "strict"
+    ],
+    "videoDuration": [
+      "any",
+      "long",
+      "medium",
+      "short"
+    ],
+    "videoCaption": [
+      "any",
+      "closedCaption",
+      "none"
+    ],
+    "videoLicense": [
+      "creativeCommon",
+      "youtube"
+    ]
+  },
+  "time_config": {
+    "start": "2023-01-01T00:00:00Z",
+    "end": "2024-01-01T00:00:00Z",
+    "interval": {
+      "weeks": 1
+    }
+  },
+  "test": false,
+  "overwrite": false
+}
