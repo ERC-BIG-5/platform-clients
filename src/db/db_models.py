@@ -1,6 +1,5 @@
 from datetime import datetime
-from typing import Type, TypedDict
-
+from typing import TypedDict
 
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, JSON, Enum, func, UniqueConstraint
 from sqlalchemy import Enum as SQLAlchemyEnum
@@ -63,6 +62,7 @@ class DBCollectionTask(Base):
     collection_duration: Mapped[int] = mapped_column(Integer, nullable=True)
     status: Mapped[CollectionStatus] = mapped_column(SQLAlchemyEnum(CollectionStatus), nullable=False,
                                                      default=CollectionStatus.INIT)
+    transient: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
     time_added: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     database: Mapped[str] = mapped_column(String(20), nullable=True)
 

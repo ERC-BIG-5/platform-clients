@@ -282,40 +282,10 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
     def transform_config(self, abstract_config: CollectConfig) -> YoutubeSearchParameters:
         return YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
 
-    def continue_tasks(self):
-        self.logger.info(f"{self.platform_name}, continue with task queue")
-        while self._task_queue:
-            task: ClientTaskConfig = self._task_queue.pop(0)
-            finished = self.continue_task(task)
-        # log when they don't all finish
-        self.logger.info(f"{self.platform_name} all tasks finished")
-
-    def continue_task(self, task: ClientTaskConfig) -> bool:
-        """
-        :param task:
-        :return: returns true we finished
-        """
-        task.status = CollectionStatus.RUNNING
-        self.logger.info(f"continue task: {task.task_name}")
-        # while task.has_more():
-        # task.update_current_config()
-        yt_config = self.transform_config(task.collection_config)
-        self.logger.debug(f"Getting data: {repr(task)}")
-        start_time = time.time()
-        # todo a more specific type
-        result: list[dict] = get_event_loop().run_until_complete(self.collect(yt_config, task.collection_config))
-        duration = time.time() - start_time
-        # todo do we ever get a None still?
-        if result is None:
-            # raise ValueError("Could not fetch data")
-            db_funcs.set_task_status(task.id, CollectionStatus.PAUSED)
-            return False
-
-        return True
-
-    async def collect(self, config: YoutubeSearchParameters, generic_config: CollectConfig) -> list[dict]:
+    async def collect(self, generic_config: CollectConfig) -> list[dict]:
 
         # ,contentDetails,statistics,status,topicDetails,recordingDetails,localizations",
+        config = self.transform_config(generic_config)
         part = getattr(config, "part")
         search_result_items = []
         pages = 0

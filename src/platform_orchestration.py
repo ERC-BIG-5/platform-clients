@@ -67,7 +67,7 @@ class PlatformOrchestrator:
                     client_config=client_config,
                 )
                 self.platform_managers[platform_name] = manager
-                self.logger.info(f"Initialized manager for platform: {platform_name}")
+                self.logger.debug(f"Initialized manager for platform: {platform_name}")
             except Exception as e:
                 self.logger.error(f"Failed to initialize manager for {platform_name}: {str(e)}")
                 raise e
@@ -118,8 +118,8 @@ class PlatformOrchestrator:
             # todo only move added tasks?
             if all_added and BIG5_CONFIG.moved_processed_tasks:
                 file.rename(PROCESSED_TASKS_PATH / file.name)
-            else:
-                self.logger.warning(f"task of file exists already: {file.name}")
+            #else:
+            #    self.logger.warning(f"task of file exists already: {file.name}")
         self.logger.info(f"new tasks: # {len(added_task)}")
         self.logger.debug(f"new tasks: # {[t for t in added_task]}")
         return added_task

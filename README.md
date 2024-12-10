@@ -3,10 +3,30 @@
 the repo, contains all the clients for the different platforms and manages the download of social media metadata and
 store it in a database
 
+### Diagram
+
+PlatformOrchestrator
+└── initialize_platform_managers()
+    └── Creates platform-specific managers (TwitterManager, YoutubeManager)
+        └── Each manager creates platform-specific client
+            └── Client handles platform API interactions
+
+DatabaseManager
+├── Main database (tracks platforms)
+└── Platform-specific databases
+    └── Stores tasks and collected data
+
+```mermaid
+graph TB
+    
+PlatformOrchestrator --> A
+
+```
 ## Adding (collection)tasks
 
 When the program starts (or `check_new_client_tasks`) is called tasks
 are loaded from `CLIENTS_TASKS_PATH` (data/clients_tasks)
+
 
 ```
 class ClientTaskConfig(BaseModel):

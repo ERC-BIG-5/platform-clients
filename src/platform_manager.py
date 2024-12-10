@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
+from sqlite3 import IntegrityError
 from typing import Generic, TypeVar
 
 from src.clients.abstract_client import AbstractClient
 from src.clients.clients_models import ClientConfig, ClientTaskConfig
 from src.const import CollectionStatus
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
-from src.db.db_models import DBPost, DBCollectionTask
+from src.db.db_models import DBPost, DBCollectionTask, DBUser
 from tools.project_logging import get_logger
 
 T_Client = TypeVar('T_Client', bound=AbstractClient)
@@ -82,28 +83,38 @@ class PlatformManager(Generic[T_Client], ABC):
             # Execute collection
             start_time = datetime.now()
             collected_items = await self.client.collect(
-                task.collection_config,
                 task.collection_config
             )
 
+            posts: list[DBPost] = []
+            users: set[DBUser] = set()
             # Process results
-            posts = [
-                self.client.create_post_entry(item, task)
-                for item in collected_items
-            ]
+            for item in collected_items:
+                posts.append(self.client.create_post_entry(item, task))
+                users.add(self.client.create_user_entry(item))
 
             # Store posts
             with self.db_mgmt.get_session() as session:
-                session.add_all(posts)
+                ## TODO catch duplicates...
+                try:
+                    session.add_all(posts)
+                    # todo ADD USERS
 
-                # Update task status
-                duration = (datetime.now() - start_time).total_seconds()
-                task_record = session.query(DBCollectionTask).get(task.id)
-                task_record.status = CollectionStatus.DONE
-                task_record.found_items = len(collected_items)
-                task_record.added_items = len(posts)
-                task_record.collection_duration = int(duration * 1000)
-
+                    # Update task status
+                    duration = (datetime.now() - start_time).total_seconds()
+                    task_record = session.query(DBCollectionTask).get(task.id)
+                    if task_record.transient:
+                        for post in posts:
+                            post.collection_task_id = None
+                        session.delete(task_record)
+                        return posts
+                    task_record.status = CollectionStatus.DONE
+                    task_record.found_items = len(collected_items)
+                    task_record.added_items = len(posts)
+                    task_record.collection_duration = int(duration * 1000)
+                except IntegrityError as err:
+                    session.rollback()
+                    self.logger.error(f"Failed to insert posts into database: {err}")
             return posts
 
         except Exception as e:

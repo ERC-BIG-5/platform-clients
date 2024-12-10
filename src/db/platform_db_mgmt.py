@@ -42,10 +42,12 @@ class PlatformDB:
                 self.logger.info(f"client collection task exists already: {task_name}")
                 return False
         with self.db_mgmt.get_session() as session:
+            # specific function. refactor out
             task = DBCollectionTask(
                 task_name=task_name,
                 platform=collection_task.platform,
                 collection_config=collection_task.model_dump()["collection_config"],
+                transient=collection_task.transient,
             )
             if exists_and_overwrite:
                 self.logger.debug(f"Collection task set to test and overwrite. overwriting existing task")

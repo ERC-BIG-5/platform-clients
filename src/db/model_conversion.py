@@ -64,3 +64,4 @@ class CollectionTaskModel(BaseDBModel):
     collection_duration: Optional[int]
     status: CollectionStatus
     time_added: datetime
+    transient: bool

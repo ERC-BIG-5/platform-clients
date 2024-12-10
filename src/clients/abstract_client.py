@@ -44,33 +44,10 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         """
         pass
 
-    def add_tasks(self, task_queue: list[ClientTaskConfig]):
-        """
-        Add a list of tasks to the client
-        :param task_queue:
-        :return:
-        """
-        self._task_queue.extend(task_queue)
+
 
     @abstractmethod
-    def continue_tasks(self):
-        """
-        Continue all tasks in sequence
-        :return:
-        """
-        pass
-
-    @abstractmethod
-    def continue_task(self, task: ClientTaskConfig) -> bool:
-        """
-        Continue a task
-        :param task:
-        :return:
-        """
-        pass
-
-    @abstractmethod
-    async def collect(self, collect_settings: CollectConfig, generic_config: CollectConfig) -> list[PostEntry]:
+    async def collect(self, collection_config: CollectConfig) -> list[PostEntry]:
         """
         Make a specific collection (step of a task). This function should use
         the client API

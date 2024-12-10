@@ -1,2 +1,4 @@
-#alembic revision --autogenerate -m "add database to collectiontask"
-#alembic upgrade head
+export PYTHONPATH=$PYTHONPATH:/home/rsoleyma/projects/Tools/
+
+alembic revision --autogenerate -m "make transient"
+alembic upgrade head
