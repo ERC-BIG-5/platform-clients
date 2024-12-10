@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -9,6 +10,8 @@ from src.clients.clients_models import TimeConfig, ClientTaskGroupConfig, Client
 from src.const import CLIENTS_TASKS_PATH
 from src.misc.files import get_abs_path
 from tools.files import read_data
+
+logger = logging.getLogger(__name__)
 
 
 def generate_timestamps(time_config: TimeConfig) -> list[datetime]:
@@ -38,6 +41,8 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
     param_names = config.variable_params.keys()
     param_values = config.variable_params.values()
     param_permutations = list(itertools.product(*param_values))
+    logger.info(
+        f"group will create {len(param_permutations) * len(timestamps)} tasks (var. permutations: {len(param_permutations)})")
 
     # Generate all concrete configs
     concrete_configs: list[ClientTaskConfig] = []
@@ -61,7 +66,7 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
                 "database": config.database,
                 "transient": config.store_as_group,
                 "test": config.test,
-                "overwrite":config.overwrite
+                "overwrite": config.overwrite
             }
             concrete_configs.append(ClientTaskConfig.model_validate(concrete_config))
             task_no += 1

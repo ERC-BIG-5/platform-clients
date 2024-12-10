@@ -1,8 +1,8 @@
 {
   "platform": "youtube",
-  "group_prefix": "2023_en_all_by_weeks",
+  "group_prefix": "test_24_many_permuts",
   "static_params": {
-    "limit": 2000,
+    "limit": 1000,
     "language": "en",
     "part": [
       "snippet",
@@ -43,7 +43,7 @@
     ]
   },
   "time_config": {
-    "start": "2023-01-01T00:00:00Z",
+    "start": "2024-01-01T00:00:00Z",
     "end": "2024-01-01T00:00:00Z",
     "interval": {
       "weeks": 1

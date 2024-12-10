@@ -1,9 +1,9 @@
 from datetime import datetime
-from datetime import datetime
 from pathlib import Path
 from typing import Optional, Literal, Sequence, Union, Protocol
 
 import itertools
+import more_itertools
 import pyrfc3339
 import yt_dlp
 from googleapiclient.discovery import build
@@ -302,12 +302,12 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         while True:
             try:
                 # region-code is automatically set to user locatin (e.g. ES)
-                self.logger.debug(config.model_dump_json(exclude_none=True))
                 config.maxResults = min(50, generic_config.limit - len(search_result_items))  # remaining
+                self.logger.debug(config.model_dump_json(exclude_none=True))
                 search_response = self.client.search().list(**config.model_dump(exclude_none=True)).execute()
                 pages += 1
                 search_result_items.extend(search_response.get('items', []))
-                if (nextPageToken := search_response.get("nextPageToken")):
+                if nextPageToken := search_response.get("nextPageToken"):
                     config.pageToken = nextPageToken
                 else:
                     break
@@ -316,9 +316,12 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             except HttpError as e:
                 print(f"An HTTP error {e.resp.status} occurred:\n{e.content.decode('utf-8')}")
                 break
-        self.logger.info(f"# response items: {len(search_result_items)}; num pages: {pages}")
 
-        video_ids = [r["id"]["videoId"] for r in search_result_items]
+        search_result_items = list(more_itertools.unique_everseen(search_result_items, key=lambda i: i["id"]["videoId"]))
+        self.logger.info(f"# uniuue response items: {len(search_result_items)}; num pages: {pages}")
+        video_ids = [_["id"]["videoId"] for _ in search_result_items]
+
+
         all_videos_results = []
         for batch in itertools.batched(video_ids, 50):
             try:
@@ -349,7 +352,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
 
         for search_item, details_item in zipped:
             v = {
-                    k: search_item.get(k) for k in ["id","snippet"] if k in search_item
+                    k: search_item.get(k) for k in ["id", "snippet"] if k in search_item
                 } | {
                     k: v for k, v in
                     details_item.items()
