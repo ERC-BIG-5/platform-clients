@@ -1,23 +1,19 @@
-from sqlite3 import IntegrityError
-
 import sqlalchemy
 from sqlalchemy import exists
 
 from src.const import BASE_DATA_PATH
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
-from src.db.db_models import DBCollectionTask
+from src.db.db_models import DBCollectionTask, DBPost
 from tools.project_logging import get_logger
 
 
 class PlatformDB:
-    
-    __connections: dict[str, "PlatformDB"] = {} 
+    __connections: dict[str, "PlatformDB"] = {}
 
     @classmethod
     def get_platform_default_db(cls, platform: str) -> DatabaseConfig:
         connection_str = f"sqlite:///{(BASE_DATA_PATH / platform).as_posix()}.sqlite"
         return DatabaseConfig("sqlite", connection_str)
-
 
     def __new__(cls, platform: str, *args, **kwargs):
         instance = super().__new__(cls)
@@ -36,7 +32,7 @@ class PlatformDB:
         with self.db_mgmt.get_session() as session:
             return session.query(exists().where(DBCollectionTask.task_name == task_name)).scalar()
 
-    def add_db_collection_task(self,  collection_task: "ClientTaskConfig") -> bool:
+    def add_db_collection_task(self, collection_task: "ClientTaskConfig") -> bool:
         task_name = collection_task.task_name
         exists_and_overwrite = False
         if self.check_task_name_exists(task_name):
@@ -56,10 +52,13 @@ class PlatformDB:
                 prev = session.query(DBCollectionTask).where(DBCollectionTask.task_name == task_name)
                 task.id = task.id
                 try:
-                    prev.delete()
+                    session.query(DBPost).where(DBPost.collection_task_id == prev.first().id).delete(
+                        synchronize_session=False
+                    )
+                    prev.delete(synchronize_session=False)
                 except sqlalchemy.exc.IntegrityError as e:
                     session.rollback()  # Rollback changes on error
-                    self.logger.error("Failed to delete entry: %s", e)
+                    self.logger.warning(f"Failed to delete exising task: {task.task_name} ({repr(e)}")
                     # Handle or re-raise the exception as needed
                     return False
 

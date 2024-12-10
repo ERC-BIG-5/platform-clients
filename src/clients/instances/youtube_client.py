@@ -17,6 +17,7 @@ from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientCo
 from src.const import ENV_FILE_PATH, PostType, CollectionStatus, CLIENTS_DATA_PATH
 from src.db import db_funcs
 from src.db.db_models import DBUser, DBPost
+from tools.project_logging import get_logger
 
 
 class GoogleAPIKeySetting(BaseSettings):
@@ -198,7 +199,7 @@ class YoutubeSearchParameters(BaseModel):
             return val
         else:
             if len(val) < 2:
-                logger.warning("Youtube search location must be a string or a list of two floats")
+                get_logger(__file__).warning("Youtube search location must be a string or a list of two floats")
                 return None
             else:
                 lat, lon = val
@@ -282,12 +283,12 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         return YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
 
     def continue_tasks(self):
-        logger.info(f"{self.platform_name}, continue with task queue")
+        self.logger.info(f"{self.platform_name}, continue with task queue")
         while self._task_queue:
             task: ClientTaskConfig = self._task_queue.pop(0)
             finished = self.continue_task(task)
         # log when they don't all finish
-        logger.info(f"{self.platform_name} all tasks finished")
+        self.logger.info(f"{self.platform_name} all tasks finished")
 
     def continue_task(self, task: ClientTaskConfig) -> bool:
         """
@@ -295,11 +296,11 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         :return: returns true we finished
         """
         task.status = CollectionStatus.RUNNING
-        logger.info(f"continue task: {task.task_name}")
+        self.logger.info(f"continue task: {task.task_name}")
         # while task.has_more():
         # task.update_current_config()
         yt_config = self.transform_config(task.collection_config)
-        logger.debug(f"Getting data: {repr(task)}")
+        self.logger.debug(f"Getting data: {repr(task)}")
         start_time = time.time()
         # todo a more specific type
         result: list[dict] = get_event_loop().run_until_complete(self.collect(yt_config, task.collection_config))
@@ -332,7 +333,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         while True:
             try:
                 # region-code is automatically set to user locatin (e.g. ES)
-                logger.debug(config.model_dump_json(exclude_none=True))
+                self.logger.debug(config.model_dump_json(exclude_none=True))
                 config.maxResults = min(50, generic_config.limit - len(search_result_items))  # remaining
                 search_response = self.client.search().list(**config.model_dump(exclude_none=True)).execute()
                 pages += 1
@@ -346,7 +347,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             except HttpError as e:
                 print(f"An HTTP error {e.resp.status} occurred:\n{e.content.decode('utf-8')}")
                 break
-        logger.info(f"# response items: {len(search_result_items)}; num pages: {pages}")
+        self.logger.info(f"# response items: {len(search_result_items)}; num pages: {pages}")
 
         video_ids = [r["id"]["videoId"] for r in search_result_items]
         all_videos_results = []
@@ -357,7 +358,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
                     id=','.join(batch)
                 ).execute()
             except HttpError as err:
-                logger.error(f"An HTTP error {err.resp.status} occurred:\n{err.content.decode('utf-8')}")
+                self.logger.error(f"An HTTP error {err.resp.status} occurred:\n{err.content.decode('utf-8')}")
                 all_videos_results.extend([{} for i in batch])
                 continue
             all_videos_results.extend(videos_response.get('items', []))
@@ -367,7 +368,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         # match search and list responses, if they dont match...
         zipped: list[tuple[dict, dict]] = []
         if len(search_result_items) != len(all_videos_results):
-            logger.warning(
+            self.logger.warning(
                 f"Number of videos returned ({len(search_result_items)}) does not match number of items ({len(all_videos_results)})"
             )
             response_items_map = {si["id"]["videoId"]: si for si in search_result_items}
