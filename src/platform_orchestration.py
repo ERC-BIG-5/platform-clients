@@ -6,7 +6,7 @@ from sqlalchemy import exists
 from src.clients.clients_models import ClientConfig, RunConfig
 from src.clients.task_groups import load_tasks
 from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config
-from src.db.db_mgmt import DatabaseManager, DatabaseConfig
+from src.db.db_mgmt import DatabaseManager
 from src.db.db_models import DBPlatformDatabase
 from src.db.model_conversion import PlatformDatabaseModel
 from src.db.platform_db_mgmt import PlatformDB
@@ -23,7 +23,7 @@ class PlatformOrchestrator:
     """
 
     def __init__(self):
-        self.platform_managers: Dict[str, PlatformManager] = {}
+        self.platform_managers: dict[str, PlatformManager] = {}
         self.run_config = RunConfig.model_validate(read_run_config())
         self.main_db = DatabaseManager(DatabaseManager.get_main_db_config())
         self.logger = get_logger(__name__)

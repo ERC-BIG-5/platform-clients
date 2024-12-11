@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TypedDict, TypeVar, Generic
 
@@ -5,7 +6,7 @@ from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, J
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship, Mapped, mapped_column, declarative_base
 from pydantic import BaseModel
-from src.clients.clients_models import CollectionStatus
+from src.clients.clients_models import CollectionStatus, ClientTaskConfig
 from src.const import PostType
 from src.db.model_conversion import PlatformDatabaseModel, CollectionTaskModel, PostModel
 
@@ -75,8 +76,8 @@ class DBCollectionTask(DBModelBase[CollectionTaskModel]):
     collection_config: Mapped[dict] = mapped_column(JSON, nullable=False)
     found_items: Mapped[int] = mapped_column(Integer, nullable=True)
     added_items: Mapped[int] = mapped_column(Integer, nullable=True)
-    # in millis
-    collection_duration: Mapped[int] = mapped_column(Integer, nullable=True)
+
+    collection_duration: Mapped[int] = mapped_column(Integer, nullable=True)  # in millis
     status: Mapped[CollectionStatus] = mapped_column(SQLAlchemyEnum(CollectionStatus), nullable=False,
                                                      default=CollectionStatus.INIT)
     transient: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
@@ -87,6 +88,7 @@ class DBCollectionTask(DBModelBase[CollectionTaskModel]):
         return f"CollectionTask: '{self.task_name}' / {self.platform}. ({self.status.name})"
 
     _pydantic_model = CollectionTaskModel
+
 
 class DBPost(DBModelBase[PostModel]):
     __tablename__ = 'post'
@@ -121,6 +123,7 @@ class DBPost(DBModelBase[PostModel]):
 
     _pydantic_model = CollectionTaskModel
 
+
 class DBPlatformDatabase(DBModelBase[PlatformDatabaseModel]):
     __tablename__ = 'platform_databases'
 
@@ -146,3 +149,12 @@ def db_m2dict(item: Base) -> dict:
         column.key: getattr(item, column.key)
         for column in type(item).__table__.columns
     }
+
+
+@dataclass
+class CollectionResult:
+    posts: list[DBPost]
+    users: list[DBUser]
+    task: ClientTaskConfig
+    duration: int
+    collected_items: int  # millis

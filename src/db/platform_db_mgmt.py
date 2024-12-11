@@ -1,10 +1,13 @@
+from sqlite3 import IntegrityError
+
 import sqlalchemy
 from sqlalchemy import exists
+from sqlalchemy import select
 
-from src.clients.clients_models import DBConfig, SQliteConnection
-from src.const import BASE_DATA_PATH
-from src.db.db_mgmt import DatabaseManager, DatabaseConfig
-from src.db.db_models import DBCollectionTask, DBPost
+from src.clients.clients_models import DBConfig, SQliteConnection, ClientTaskConfig
+from src.const import BASE_DATA_PATH, CollectionStatus
+from src.db.db_mgmt import DatabaseManager
+from src.db.db_models import DBCollectionTask, DBPost, CollectionResult
 from tools.project_logging import get_logger
 
 
@@ -80,3 +83,53 @@ class PlatformDB:
     def get_db_manager(self) -> DatabaseManager:
         """Get the underlying database manager"""
         return self.db_mgmt
+
+    def get_pending_tasks(self) -> list[ClientTaskConfig]:
+        """Get all tasks that need to be executed"""
+        with self.db_mgmt.get_session() as session:
+            tasks = session.query(DBCollectionTask).filter(
+                DBCollectionTask.status.in_([
+                    CollectionStatus.INIT,
+                    CollectionStatus.ACTIVE,
+                    CollectionStatus.PAUSED
+                ])
+            ).all()
+            return [ClientTaskConfig.model_validate(task) for task in tasks]
+
+
+    def insert_posts(self, collection: CollectionResult):
+        with self.db_mgmt.get_session() as session:
+            all_post_ids = [post.platform_id for post in collection.posts]
+            existing_ids = session.execute(
+                select(DBPost.platform_id).filter(DBPost.platform_id.in_(all_post_ids))).scalars().all()
+            posts = list(filter(lambda post: post.platform_id not in existing_ids, collection.posts))
+
+            # Store posts
+            with self.db_mgmt.get_session() as session:
+                try:
+                    session.add_all(posts)
+                    # todo ADD USERS
+                    # Update task status
+
+                    task_record = session.query(DBCollectionTask).get(collection.task.id)
+                    if task_record.transient:
+                        for post in posts:
+                            post.collection_task_id = None
+                        session.delete(task_record)
+                        return posts
+                    task_record.status = CollectionStatus.DONE
+                    task_record.found_items = collection.collected_items
+                    task_record.added_items = len(posts)
+                    task_record.collection_duration = collection.duration
+                except IntegrityError as err:
+                    session.rollback()
+                    self.logger.error(f"Failed to insert posts into database: {err}")
+        self.logger.info(f"Added {len(posts)} posts to database")
+
+
+    def update_task_status(self, task_id: int, status: CollectionStatus):
+        """Update task status in database"""
+        with self.db_mgmt.get_session() as session:
+            task = session.query(DBCollectionTask).get(task_id)
+            task.status = status
+            session.commit()

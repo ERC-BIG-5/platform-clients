@@ -28,20 +28,18 @@ class DatabaseConfig:
         self.db_name = db_name
 
 
-
-
 class DatabaseManager:
-    __databases: dict[str, "DatabaseManager"] = {}
+    #__databases: dict[str, "DatabaseManager"] = {}
 
-    def __new__(cls, *args, **kwargs) -> "DatabaseManager":
-
-        assert isinstance(args[0], DBConfig)
-        config: DBConfig = args[0]
-        existing_db_mgmt = cls.__databases.get(config.connection_str)
-        if existing_db_mgmt:
-            return existing_db_mgmt
-        else:
-            return super().__new__(cls)
+    # def __new__(cls, *args, **kwargs) -> "DatabaseManager":
+    #
+    #     assert isinstance(args[0], DBConfig)
+    #     config: DBConfig = args[0]
+    #     existing_db_mgmt = cls.__databases.get(config.connection_str)
+    #     if existing_db_mgmt:
+    #         return existing_db_mgmt
+    #     else:
+    #         return super().__new__(cls)
 
     def __init__(self, config: DBConfig):
         self.config = config
@@ -53,7 +51,7 @@ class DatabaseManager:
         if config.db_type == "sqlite":
             event.listen(self.engine, 'connect', self._sqlite_on_connect)
 
-        self.__databases[config.connection_str] = self
+        #self.__databases[config.connection_str] = self
 
     def _create_engine(self) -> Engine:
         self.logger.debug(f"creating db engine with {self.config.connection_str}")

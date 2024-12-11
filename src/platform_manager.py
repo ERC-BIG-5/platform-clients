@@ -1,21 +1,18 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from sqlite3 import IntegrityError
 from typing import Generic, TypeVar
-from sqlalchemy import select
 
 from src.clients.abstract_client import AbstractClient
 from src.clients.clients_models import ClientConfig, ClientTaskConfig
 from src.const import CollectionStatus
-from src.db.db_mgmt import DatabaseManager, DatabaseConfig
-from src.db.db_models import DBPost, DBCollectionTask, DBUser
+from src.db.db_models import DBPost, DBCollectionTask, CollectionResult
 from src.db.platform_db_mgmt import PlatformDB
 from tools.project_logging import get_logger
 
 T_Client = TypeVar('T_Client', bound=AbstractClient)
 
 
-class PlatformManager(Generic[T_Client], ABC):
+class   PlatformManager(Generic[T_Client], ABC):
     """
     Base class for managing platform-specific operations including:
     - Client management
@@ -31,7 +28,6 @@ class PlatformManager(Generic[T_Client], ABC):
 
         # Initialize platform database
         self.platform_db = PlatformDB(platform_name, client_config.db_config)
-        self.db_mgmt = self.platform_db.get_db_manager()
 
         self.client.manager = self
         self._active_tasks: list[ClientTaskConfig] = []
@@ -44,7 +40,7 @@ class PlatformManager(Generic[T_Client], ABC):
         pass
 
     def _setup_client(self):
-        """Setup the client if not already set up"""
+        """Set up the client if not already set up"""
         if not self._client_setup and self.client:
             # logger.info(f"Setting up client for platform: {self.platform_name}")
             self.client.setup()
@@ -56,75 +52,20 @@ class PlatformManager(Generic[T_Client], ABC):
 
     def get_pending_tasks(self) -> list[ClientTaskConfig]:
         """Get all tasks that need to be executed"""
-        with self.db_mgmt.get_session() as session:
-            tasks = session.query(DBCollectionTask).filter(
-                DBCollectionTask.status.in_([
-                    CollectionStatus.INIT,
-                    CollectionStatus.ACTIVE,
-                    CollectionStatus.PAUSED
-                ])
-            ).all()
-            return [ClientTaskConfig.model_validate(task) for task in tasks]
+        return self.platform_db.get_pending_tasks()
 
-    async def execute_task(self, task: ClientTaskConfig) -> list[DBPost]:
+    async def execute_task(self, task: ClientTaskConfig) -> CollectionResult:
         """Execute a single collection task"""
         try:
-            self._update_task_status(task.id, CollectionStatus.RUNNING)
-
-            # Execute collection
-            start_time = datetime.now()
-            collected_items = await self.client.collect(
-                task.collection_config
-            )
-
-            posts: list[DBPost] = []
-            users: set[DBUser] = set()
-            # Process results
-            for item in collected_items:
-                posts.append(self.client.create_post_entry(item, task))
-                users.add(self.client.create_user_entry(item))
-
-            with self.db_mgmt.get_session() as session:
-                all_post_ids = [post.platform_id for post in posts]
-                existing_ids = session.execute(
-                    select(DBPost.platform_id).filter(DBPost.platform_id.in_(all_post_ids))).scalars().all()
-                posts = list(filter(lambda post: post.platform_id not in existing_ids, posts))
-
-                # Store posts
-                with self.db_mgmt.get_session() as session:
-                    try:
-                        session.add_all(posts)
-
-                        # todo ADD USERS
-
-                        # Update task status
-                        duration = (datetime.now() - start_time).total_seconds()
-                        task_record = session.query(DBCollectionTask).get(task.id)
-                        if task_record.transient:
-                            for post in posts:
-                                post.collection_task_id = None
-                            session.delete(task_record)
-                            return posts
-                        task_record.status = CollectionStatus.DONE
-                        task_record.found_items = len(collected_items)
-                        task_record.added_items = len(posts)
-                        task_record.collection_duration = int(duration * 1000)
-                    except IntegrityError as err:
-                        session.rollback()
-                        self.logger.error(f"Failed to insert posts into database: {err}")
-            self.logger.info(f"Added {len(posts)} posts to database")
-            return posts
+            self.platform_db.update_task_status(task.id, CollectionStatus.RUNNING)
+            collection = await self.client.execute_task(task)
+            self.platform_db.insert_posts(collection)
+            return collection
 
         except Exception as e:
-            self._update_task_status(task.id, CollectionStatus.ABORTED)
+            self.platform_db.update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
 
-    def _update_task_status(self, task_id: int, status: CollectionStatus):
-        """Update task status in database"""
-        with self.db_mgmt.get_session() as session:
-            task = session.query(DBCollectionTask).get(task_id)
-            task.status = status
-            session.commit()
 
     async def process_all_tasks(self):
         """Process all pending tasks"""

@@ -7,7 +7,7 @@ from typing import TypeVar, Optional, TYPE_CHECKING
 from pydantic import BaseModel
 
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
-from src.db.db_models import DBPost, DBUser
+from src.db.db_models import DBPost, DBUser, CollectionResult
 from tools.project_logging import get_logger
 
 if TYPE_CHECKING:
@@ -26,7 +26,6 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         self.manager: Optional["PlatformManager"]
         self.logger = get_logger(__name__)
 
-
     @abstractmethod
     def setup(self):
         """
@@ -44,7 +43,26 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         """
         pass
 
+    async def execute_task(self, task: ClientTaskConfig) -> CollectionResult:
+        start_time = datetime.now()
+        collected_items = await self.collect(
+            task.collection_config
+        )
 
+        posts: list[DBPost] = []
+        users: set[DBUser] = set()
+        # Process results
+        for item in collected_items:
+            posts.append(self.create_post_entry(item, task))
+            users.add(self.create_user_entry(item))
+
+        return CollectionResult(
+            posts = posts,
+            users = list(users),
+            task=task,
+            collected_items= len(collected_items),
+            duration=int((datetime.now() - start_time).total_seconds() * 1000) # millis
+        )
 
     @abstractmethod
     async def collect(self, collection_config: CollectConfig) -> list[PostEntry]:

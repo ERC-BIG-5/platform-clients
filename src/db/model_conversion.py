@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from src.const import CollectionStatus, PostType
 
 
-
 # Base Models
 class BaseDBModel(BaseModel):
     """Base model with common fields"""
@@ -66,3 +65,4 @@ class CollectionTaskModel(BaseDBModel):
     status: CollectionStatus
     time_added: datetime
     transient: bool
+

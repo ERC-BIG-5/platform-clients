@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 
 import math
@@ -133,3 +134,5 @@ class BaseEnvSettings(BaseSettings):
 
 class RunConfigModel(BaseModel):
     clients: dict[str, ClientConfig] = Field(default_factory=dict)
+
+
