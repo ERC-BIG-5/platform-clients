@@ -3,9 +3,9 @@ from typing import Dict, Type
 
 from sqlalchemy import exists
 
-from src.clients.clients_models import ClientConfig
+from src.clients.clients_models import ClientConfig, RunConfig
 from src.clients.task_groups import load_tasks
-from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH
+from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
 from src.db.db_models import DBPlatformDatabase
 from src.db.model_conversion import PlatformDatabaseModel
@@ -24,8 +24,10 @@ class PlatformOrchestrator:
 
     def __init__(self):
         self.platform_managers: Dict[str, PlatformManager] = {}
-        self.main_db = DatabaseManager(DatabaseConfig.get_main_db_config())
+        self.run_config = RunConfig.model_validate(read_run_config())
+        self.main_db = DatabaseManager(DatabaseManager.get_main_db_config())
         self.logger = get_logger(__name__)
+        self.initialize_platform_managers(None)
 
     def _get_registered_platforms(self) -> list[PlatformDatabaseModel]:
         """Get all registered platforms from the main database"""
@@ -47,23 +49,18 @@ class PlatformOrchestrator:
                 self.logger.warning(f"No manager implementation found for platform: {platform_name}")
                 continue
 
-            # Create database config for platform
-            db_config = DatabaseConfig(
-                db_type="sqlite",  # Or get from config
-                connection_string=platform_db.connection_str
-            )
-
-            # todo. bring back
-            # Create client config for platform
-            # todo: does it always need to be there
-            # bind configs to tasks?
             client_config = ClientConfig.model_validate(
-                RUN_CONFIG["clients"][platform_name])  # Load from environment or config
+                RUN_CONFIG["clients"][platform_name])
+
+            # todo check main db, first for a default_db for platform, then use this
+            if not client_config.db_config:
+                client_config.db_config= PlatformDB.get_platform_default_db(platform_name)
+
+            # Load from environment or config
             # Initialize platform manager
             try:
                 manager = manager_class(
                     platform_name=platform_name,
-                    db_config=db_config,
                     client_config=client_config,
                 )
                 self.platform_managers[platform_name] = manager
@@ -73,8 +70,7 @@ class PlatformOrchestrator:
                 raise e
 
     def add_platform_db(self, platform: str, connection_str: str):
-        main_db_mgmt = DatabaseManager(DatabaseConfig.get_main_db_config())
-        with main_db_mgmt.get_session() as session:
+        with self.main_db.get_session() as session:
             if session.query(exists().where(DBPlatformDatabase.platform == platform)).scalar():
                 return
             session.add(DBPlatformDatabase(platform=platform, connection_str=connection_str))
@@ -82,8 +78,7 @@ class PlatformOrchestrator:
 
     async def progress_tasks(self, platforms: list[str] = None):
         """Progress tasks for specified platforms or all platforms"""
-        if not self.platform_managers:
-            self.initialize_platform_managers(platforms)
+
 
         # Create tasks for each platform
         platform_tasks = []
@@ -100,29 +95,33 @@ class PlatformOrchestrator:
         check for json file in the specific folder and add them into the sdb
         :return: returns a list of task names
         """
-        added_task = []
+        added_tasks = []
         for file in CLIENTS_TASKS_PATH.glob("*.json"):
             # create collection_task models
             group_config, tasks = load_tasks(file)
             all_added = True
             for task in tasks:
-                platform_db_mgmt = PlatformDB(task.platform)
-                processed = platform_db_mgmt.add_db_collection_task(task)
-                if processed:
-                    added_task.append(task.task_name)
+                if task.platform not in self.platform_managers:
+                    self.logger.warning(f"No manager found for platform: {task.platform}")
+                    all_added = False
+                    continue
+
+                manager = self.platform_managers[task.platform]
+                if manager.add_task(task):
+                    added_tasks.append(task.task_name)
+                    # Register platform database in main DB
+                    self.add_platform_db(task.platform, manager.platform_db.db_config.connection_str)
                 else:
                     all_added = False
-
-                self.add_platform_db(task.platform, platform_db_mgmt.db_config.connection_string)
 
             # todo only move added tasks?
             if all_added and BIG5_CONFIG.moved_processed_tasks:
                 file.rename(PROCESSED_TASKS_PATH / file.name)
-            #else:
+            # else:
             #    self.logger.warning(f"task of file exists already: {file.name}")
-        self.logger.info(f"new tasks: # {len(added_task)}")
-        self.logger.debug(f"new tasks: # {[t for t in added_task]}")
-        return added_task
+        self.logger.info(f"new tasks: # {len(added_tasks)}")
+        self.logger.debug(f"new tasks: # {[t for t in added_tasks]}")
+        return added_tasks
 
 
 # Register platform-specific managers

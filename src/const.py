@@ -2,7 +2,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from tools.files import read_data
@@ -32,11 +32,11 @@ class Big5Config(BaseSettings):
 
 
 
-
 BIG5_CONFIG = Big5Config()
 RUN_CONFIG = read_data(BASE_DATA_PATH / "_RUN_CONFIG" / BIG5_CONFIG.run_config_file_name)
 
-
+def read_run_config() -> dict:
+    return read_data(BASE_DATA_PATH / "_RUN_CONFIG" / BIG5_CONFIG.run_config_file_name)
 
 class CollectionStatus(Enum):
     INIT = auto()

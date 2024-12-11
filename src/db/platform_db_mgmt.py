@@ -1,6 +1,7 @@
 import sqlalchemy
 from sqlalchemy import exists
 
+from src.clients.clients_models import DBConfig, SQliteConnection
 from src.const import BASE_DATA_PATH
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
 from src.db.db_models import DBCollectionTask, DBPost
@@ -8,12 +9,16 @@ from tools.project_logging import get_logger
 
 
 class PlatformDB:
+    """
+    Singleton class to manage platform-specific database connections
+    """
     __connections: dict[str, "PlatformDB"] = {}
 
     @classmethod
-    def get_platform_default_db(cls, platform: str) -> DatabaseConfig:
-        connection_str = f"sqlite:///{(BASE_DATA_PATH / platform).as_posix()}.sqlite"
-        return DatabaseConfig("sqlite", connection_str)
+    def get_platform_default_db(cls, platform: str) -> DBConfig:
+        return DBConfig(db_connection=SQliteConnection(
+            db_path=(BASE_DATA_PATH / f"{platform}.sqlite").as_posix()
+        ))
 
     def __new__(cls, platform: str, *args, **kwargs):
         instance = super().__new__(cls)
@@ -21,12 +26,14 @@ class PlatformDB:
             cls.__connections[platform] = instance
         return cls.__connections[platform]
 
-    def __init__(self, platform: str):
-        self.platform = platform
-        self.db_config = self.get_platform_default_db(platform)
-        self.db_mgmt = DatabaseManager(self.db_config)
-        # todo : make platform specific
-        self.logger = get_logger(__file__)
+    def __init__(self, platform: str, db_config: DBConfig = None):
+        # Only initialize if this is a new instance
+        if not hasattr(self, 'initialized'):
+            self.platform = platform
+            self.db_config = db_config or self.get_platform_default_db(platform)
+            self.db_mgmt = DatabaseManager(self.db_config)
+            self.logger = get_logger(__file__)
+            self.initialized = True
 
     def check_task_name_exists(self, task_name: str) -> bool:
         with self.db_mgmt.get_session() as session:
@@ -68,3 +75,8 @@ class PlatformDB:
             session.commit()
             self.logger.info(f"Added new client collection task: {task_name}")
             return True
+
+
+    def get_db_manager(self) -> DatabaseManager:
+        """Get the underlying database manager"""
+        return self.db_mgmt

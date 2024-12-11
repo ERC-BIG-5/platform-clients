@@ -1,8 +1,10 @@
+from pathlib import Path
+
 import math
 from datetime import datetime
-from typing import Optional, Any
+from typing import Optional, Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator,ValidationInfo
+from pydantic import BaseModel, Field, field_validator, model_validator,ValidationInfo, SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.const import CollectionStatus, ENV_FILE_PATH
@@ -21,11 +23,48 @@ class CollectConfig(BaseModel):
     location_mod: Optional[str] = None
 
 
+class SQliteConnection(BaseModel):
+    db_path: str
+
+    @computed_field
+    @property
+    def connection_str(self) -> str:
+        return f"sqlite:///{self.db_path}"
+
+class PostgresConnection(BaseModel):
+    db_name: str
+    db_user: str
+    db_password: SecretStr
+    db_host: str
+    db_port: int = 5432
+
+class DBConfig(BaseModel):
+    model_config = {'extra': "forbid", "from_attributes": True}
+    db_connection: SQliteConnection | PostgresConnection
+    name: Optional[str] = None
+    is_default: bool = Field(False)
+    reset_db: bool = False
+
+    @computed_field
+    @property
+    def connection_str(self) -> str:
+        return self.db_connection.connection_str
+
+    @computed_field
+    @property
+    def db_type(self)-> Literal["sqlite","postegres"]:
+        return "sqlite" if isinstance(self.db_connection, SQliteConnection) else "postgres"
+
+
 class ClientConfig(BaseModel):
-    model_config = {'extra': "allow"}
+    model_config = {'extra': "forbid", "from_attributes": True}
     auth_config: Optional[dict[str, str]] = None
     request_delay: Optional[int] = 0
+    db_config: Optional[DBConfig] = None
 
+class RunConfig(BaseModel):
+    model_config = {'extra': "forbid", "from_attributes": True}
+    clients: dict[str, ClientConfig]
 
 class ClientTaskConfig(BaseModel):
     model_config = {'extra': "forbid", "from_attributes": True}

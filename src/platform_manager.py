@@ -9,6 +9,7 @@ from src.clients.clients_models import ClientConfig, ClientTaskConfig
 from src.const import CollectionStatus
 from src.db.db_mgmt import DatabaseManager, DatabaseConfig
 from src.db.db_models import DBPost, DBCollectionTask, DBUser
+from src.db.platform_db_mgmt import PlatformDB
 from tools.project_logging import get_logger
 
 T_Client = TypeVar('T_Client', bound=AbstractClient)
@@ -24,10 +25,14 @@ class PlatformManager(Generic[T_Client], ABC):
     Each platform should implement its own subclass of PlatformManager.
     """
 
-    def __init__(self, platform_name: str, db_config: DatabaseConfig, client_config: ClientConfig):
+    def __init__(self, platform_name: str, client_config: ClientConfig):
         self.platform_name = platform_name
-        self.db_mgmt = DatabaseManager(db_config)
         self.client = self._create_client(client_config)
+
+        # Initialize platform database
+        self.platform_db = PlatformDB(platform_name, client_config.db_config)
+        self.db_mgmt = self.platform_db.get_db_manager()
+
         self.client.manager = self
         self._active_tasks: list[ClientTaskConfig] = []
         self._client_setup = False
@@ -46,23 +51,8 @@ class PlatformManager(Generic[T_Client], ABC):
             self._client_setup = True
 
     def add_task(self, task: ClientTaskConfig) -> bool:
-        """
-        Add a new collection task
-        Returns True if task was added, False if it already exists
-        """
-        with self.db_mgmt.get_session() as session:
-            if session.query(DBCollectionTask).filter_by(task_name=task.task_name).first():
-                return False
-
-            db_task = DBCollectionTask(
-                task_name=task.task_name,
-                platform=self.platform_name,
-                collection_config=task.collection_config.model_dump(),
-                status=CollectionStatus.INIT,
-                time_added=datetime.now()
-            )
-            session.add(db_task)
-            return True
+        """Add a new collection task"""
+        return self.platform_db.add_db_collection_task(task)
 
     def get_pending_tasks(self) -> list[ClientTaskConfig]:
         """Get all tasks that need to be executed"""

@@ -126,6 +126,7 @@ class DBPlatformDatabase(DBModelBase[PlatformDatabaseModel]):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     platform: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(20), nullable=True)
     connection_str: Mapped[str] = mapped_column(String(), nullable=False)
     is_default: Mapped[bool] = mapped_column(Boolean())
 
