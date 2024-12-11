@@ -7,7 +7,8 @@ from typing import Optional, Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator,ValidationInfo, SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.const import CollectionStatus, ENV_FILE_PATH
+from src.const import CollectionStatus, ENV_FILE_PATH, BASE_DATA_PATH
+
 
 class EmptyModel(BaseModel):
     pass
@@ -29,7 +30,11 @@ class SQliteConnection(BaseModel):
     @computed_field
     @property
     def connection_str(self) -> str:
-        return f"sqlite:///{self.db_path}"
+        p = Path(self.db_path)
+        if p.is_absolute():
+            return f"sqlite:///{self.db_path}"
+        else:
+            return f"sqlite:///{(BASE_DATA_PATH / p).as_posix()}"
 
 class PostgresConnection(BaseModel):
     db_name: str
