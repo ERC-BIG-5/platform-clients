@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Literal, Sequence, Union, Protocol
@@ -363,6 +364,9 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
         sorted(videos, key=lambda i: i.get("snippet")["publishedAt"])
         self.logger.info(f"Collected {len(videos)} videos.")
         return videos
+
+    def collect_sync(self, generic_config: CollectConfig) -> list[dict]:
+        return asyncio.run(self.collect(generic_config))
 
     def create_post_entry(self, post: dict, task: ClientTaskConfig) -> DBPost:
         return DBPost(

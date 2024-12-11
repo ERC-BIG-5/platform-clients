@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Generator
 
 from src.const import CLIENTS_TASKS_PATH, BASE_DATA_PATH
-from src.misc.files import read_data
+from tools.files import read_data
 
 
 def time_interval_steps(from_date: datetime, to_date: datetime, delta: timedelta) -> Generator[datetime, None, None]:

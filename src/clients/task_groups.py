@@ -8,8 +8,7 @@ from pydantic_core._pydantic_core import ValidationError
 
 from src.clients.clients_models import TimeConfig, ClientTaskGroupConfig, ClientTaskConfig
 from src.const import CLIENTS_TASKS_PATH
-from src.misc.files import get_abs_path
-from tools.files import read_data
+from tools.files import read_data, get_abs_path
 
 logger = logging.getLogger(__name__)
 

@@ -18,6 +18,7 @@ class BaseDBModel(BaseModel):
 
 # Platform Models
 class PlatformDatabaseModel(BaseDBModel):
+
     """Model for platform database configuration"""
     platform: str
     connection_str: str

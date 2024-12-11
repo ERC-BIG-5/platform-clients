@@ -1,15 +1,32 @@
 from datetime import datetime
-from typing import TypedDict
+from typing import TypedDict, TypeVar, Generic
 
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, JSON, Enum, func, UniqueConstraint
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship, Mapped, mapped_column, declarative_base
-
+from pydantic import BaseModel
 from src.clients.clients_models import CollectionStatus
 from src.const import PostType
 from src.db.model_conversion import PlatformDatabaseModel, CollectionTaskModel, PostModel
 
 Base = declarative_base()
+
+T = TypeVar('T', bound=BaseModel)
+
+
+class EmptyModel(BaseModel):
+    pass
+
+
+class DBModelBase(Generic[T], Base):
+    """
+    Generic base class for all database models that can be converted to Pydantic models
+    """
+    __abstract__ = True
+    _pydantic_model = EmptyModel
+
+    def model(self) -> T:
+        return self._pydantic_model.model_validate(self, from_attributes=True)
 
 
 class DBUser(Base):
@@ -44,7 +61,7 @@ class DBComment(Base):
     post: Mapped["DBPost"] = relationship(back_populates="comments")
 
 
-class DBCollectionTask(Base):
+class DBCollectionTask(DBModelBase[CollectionTaskModel]):
     __tablename__ = 'collection_task'
 
     # this for alembic
@@ -69,11 +86,9 @@ class DBCollectionTask(Base):
     def __repr__(self) -> str:
         return f"CollectionTask: '{self.task_name}' / {self.platform}. ({self.status.name})"
 
-    def model(self) -> CollectionTaskModel:
-        return CollectionTaskModel.from_orm(self)
+    _pydantic_model = CollectionTaskModel
 
-
-class DBPost(Base):
+class DBPost(DBModelBase[PostModel]):
     __tablename__ = 'post'
 
     # this for alembic
@@ -83,8 +98,8 @@ class DBPost(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     platform: Mapped[str] = mapped_column(String(20), nullable=False)
-    platform_id: Mapped[str] = mapped_column(String(50), nullable=True, unique=True)
-    post_url: Mapped[str] = mapped_column(String(60), nullable=False)
+    platform_id: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    post_url: Mapped[str] = mapped_column(String(60), nullable=True)
     date_created: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     post_type: Mapped[PostType] = mapped_column(Enum(PostType), nullable=False, default=PostType.REGULAR)
     content: Mapped[dict] = Column(JSON)
@@ -104,11 +119,9 @@ class DBPost(Base):
 
     comments: Mapped[list[DBComment]] = relationship(back_populates="post")
 
-    def model(self) -> PostModel:
-        return PostModel.from_orm(self)
+    _pydantic_model = CollectionTaskModel
 
-
-class DBPlatformDatabase(Base):
+class DBPlatformDatabase(DBModelBase[PlatformDatabaseModel]):
     __tablename__ = 'platform_databases'
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -116,8 +129,7 @@ class DBPlatformDatabase(Base):
     connection_str: Mapped[str] = mapped_column(String(), nullable=False)
     is_default: Mapped[bool] = mapped_column(Boolean())
 
-    def model(self) -> PlatformDatabaseModel:
-        return PlatformDatabaseModel.from_orm(self)
+    _pydantic_model = PlatformDatabaseModel
 
 
 M_DBPlatformDatabase = TypedDict("M_DBPlatformDatabase",

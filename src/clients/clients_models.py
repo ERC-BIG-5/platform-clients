@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 from typing import Optional, Any
 
@@ -6,11 +7,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.const import CollectionStatus, ENV_FILE_PATH
 
+class EmptyModel(BaseModel):
+    pass
 
 class CollectConfig(BaseModel):
     model_config = {'extra': "allow"}
     query: Optional[str] = None
-    limit: Optional[int] = None
+    limit: Optional[int] = math.inf
     from_time: Optional[str] = None
     to_time: Optional[str] = None
     language: Optional[str] = None
