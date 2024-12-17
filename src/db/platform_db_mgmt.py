@@ -15,7 +15,6 @@ class PlatformDB:
     """
     Singleton class to manage platform-specific database connections
     """
-    __connections: dict[str, "PlatformDB"] = {}
 
     @classmethod
     def get_platform_default_db(cls, platform: str) -> DBConfig:
@@ -23,20 +22,14 @@ class PlatformDB:
             db_path=(BASE_DATA_PATH / f"{platform}.sqlite").as_posix()
         ))
 
-    def __new__(cls, platform: str, *args, **kwargs):
-        instance = super().__new__(cls)
-        if platform not in cls.__connections:
-            cls.__connections[platform] = instance
-        return cls.__connections[platform]
 
     def __init__(self, platform: str, db_config: DBConfig = None):
         # Only initialize if this is a new instance
-        if not hasattr(self, 'initialized'):
-            self.platform = platform
-            self.db_config = db_config or self.get_platform_default_db(platform)
-            self.db_mgmt = DatabaseManager(self.db_config)
-            self.logger = get_logger(__file__)
-            self.initialized = True
+        self.platform = platform
+        self.db_config = db_config or self.get_platform_default_db(platform)
+        self.db_mgmt = DatabaseManager(self.db_config)
+        self.logger = get_logger(__file__)
+        self.initialized = True
 
     def check_task_name_exists(self, task_name: str) -> bool:
         with self.db_mgmt.get_session() as session:

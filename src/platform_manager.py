@@ -12,7 +12,7 @@ from tools.project_logging import get_logger
 T_Client = TypeVar('T_Client', bound=AbstractClient)
 
 
-class   PlatformManager(Generic[T_Client], ABC):
+class PlatformManager(Generic[T_Client], ABC):
     """
     Base class for managing platform-specific operations including:
     - Client management
@@ -28,7 +28,6 @@ class   PlatformManager(Generic[T_Client], ABC):
 
         # Initialize platform database
         self.platform_db = PlatformDB(platform_name, client_config.db_config)
-
         self.client.manager = self
         self._active_tasks: list[ClientTaskConfig] = []
         self._client_setup = False
@@ -54,7 +53,14 @@ class   PlatformManager(Generic[T_Client], ABC):
         """Get all tasks that need to be executed"""
         return self.platform_db.get_pending_tasks()
 
-    async def execute_task(self, task: ClientTaskConfig) -> CollectionResult:
+    async def process_all_tasks(self):
+        """Process all pending tasks"""
+        tasks = self.get_pending_tasks()
+        for task in tasks:
+            self._setup_client()
+            await self.process_task(task)
+
+    async def process_task(self, task: ClientTaskConfig) -> CollectionResult:
         """Execute a single collection task"""
         try:
             self.platform_db.update_task_status(task.id, CollectionStatus.RUNNING)
@@ -65,12 +71,3 @@ class   PlatformManager(Generic[T_Client], ABC):
         except Exception as e:
             self.platform_db.update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
-
-
-    async def process_all_tasks(self):
-        """Process all pending tasks"""
-        tasks = self.get_pending_tasks()
-        for task in tasks:
-            self._setup_client()
-            await self.execute_task(task)
-            pass

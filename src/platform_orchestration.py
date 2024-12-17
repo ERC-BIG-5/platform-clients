@@ -21,13 +21,21 @@ class PlatformOrchestrator:
     Central orchestrator that manages all platform operations.
     Handles platform discovery, initialization, and task execution.
     """
+    __instance: "PlatformOrchestrator" = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls.__instance:
+            return cls.__instance
+        return super().__new__(cls)
 
     def __init__(self):
-        self.platform_managers: dict[str, PlatformManager] = {}
-        self.run_config = RunConfig.model_validate(read_run_config())
-        self.main_db = DatabaseManager(DatabaseManager.get_main_db_config())
-        self.logger = get_logger(__name__)
-        self.initialize_platform_managers(None)
+        if not self.__instance:
+            self.platform_managers: dict[str, PlatformManager] = {}
+            self.run_config = RunConfig.model_validate(read_run_config())
+            self.main_db = DatabaseManager(DatabaseManager.get_main_db_config())
+            self.logger = get_logger(__name__)
+            self.initialize_platform_managers(None)
+            self.__instance = self
 
     def _get_registered_platforms(self) -> list[PlatformDatabaseModel]:
         """Get all registered platforms from the main database"""
@@ -54,7 +62,7 @@ class PlatformOrchestrator:
 
             # todo check main db, first for a default_db for platform, then use this
             if not client_config.db_config:
-                client_config.db_config= PlatformDB.get_platform_default_db(platform_name)
+                client_config.db_config = PlatformDB.get_platform_default_db(platform_name)
 
             # Load from environment or config
             # Initialize platform manager
@@ -78,7 +86,6 @@ class PlatformOrchestrator:
 
     async def progress_tasks(self, platforms: list[str] = None):
         """Progress tasks for specified platforms or all platforms"""
-
 
         # Create tasks for each platform
         platform_tasks = []

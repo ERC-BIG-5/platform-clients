@@ -58,7 +58,7 @@ class TwitterManager(PlatformManager[TwitterClient]):
         # Add current request timestamp
         self.request_timestamps.append(current_time)
 
-    async def execute_task(self, task: ClientTaskConfig) -> list[DBPost]:
+    async def process_task(self, task: ClientTaskConfig) -> list[DBPost]:
         """
         Execute Twitter collection task with specific handling for:
         - Rate limiting
@@ -116,6 +116,6 @@ class TwitterManager(PlatformManager[TwitterClient]):
             return posts
 
         except Exception as e:
-            logger.error(f"Error executing Twitter task {task.task_name}: {str(e)}")
+            self.logger.error(f"Error executing Twitter task {task.task_name}: {str(e)}")
             self._update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
