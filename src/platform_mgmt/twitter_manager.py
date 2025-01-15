@@ -66,17 +66,17 @@ class TwitterManager(PlatformManager[TwitterClient]):
         - User data collection
         """
         try:
-            self._update_task_status(task.id, CollectionStatus.RUNNING)
+            self.platform_db.update_task_status(task.id, CollectionStatus.RUNNING)
             start_time = datetime.now()
 
             await self._ensure_accounts_initialized()
-            # Twitter-specific config transformation
-            twitter_config = self.client.transform_config(task.collection_config)
+
+            if not self.client.api:
+                await self.client.initialize_auth()
 
             # Execute collection with rate limiting
             self._check_rate_limit()
             collected_items = await self.client.collect(
-                twitter_config,
                 task.collection_config
             )
 
@@ -95,7 +95,7 @@ class TwitterManager(PlatformManager[TwitterClient]):
                     users.add(user)
 
             # Store in database
-            with self.db_mgmt.get_session() as session:
+            with self.platform_db.db_mgmt.get_session() as session:
                 # Add users first to establish relationships
                 session.add_all(users)
                 session.flush()
@@ -117,5 +117,5 @@ class TwitterManager(PlatformManager[TwitterClient]):
 
         except Exception as e:
             self.logger.error(f"Error executing Twitter task {task.task_name}: {str(e)}")
-            self._update_task_status(task.id, CollectionStatus.ABORTED)
+            self.platform_db.update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
