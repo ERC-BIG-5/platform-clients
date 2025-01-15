@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 from sqlalchemy import select, exists
 
 from src.const import CollectionStatus
-from src.db.db_mgmt import DatabaseManager, DatabaseConfig
+from src.db.db_mgmt import DatabaseManager
 from src.db.db_models import DBPost, DBCollectionTask, DBPlatformDatabase, db_m2dict, M_DBPlatformDatabase
 from src.db.platform_db_mgmt import PlatformDB
 from tools.project_logging import get_logger
@@ -69,24 +69,6 @@ def get_posts(platform: str,
         result = session.execute(query)
         return result.scalars().all()
 
-
-def get_task_queue(platforms: Optional[Sequence[str]] = None) -> list[DBCollectionTask]:
-    queueable_statuses = [CollectionStatus.INIT, CollectionStatus.ACTIVE, CollectionStatus.PAUSED]
-
-    platforms_d_models = main_db_get_all_platforms()
-    if platforms:
-        platforms_d_models = list(filter(lambda p: p in platforms, platforms_d_models))
-    for platform in platforms_d_models:
-        platform_db_mgmt = PlatformDB(platform["platform"])
-        query = select(DBCollectionTask).where(DBCollectionTask.status.in_(queueable_statuses))
-        if platforms is not None:
-            query = query.where(DBCollectionTask.platform.in_(list(platforms)))
-
-        # TODO, ended here. sessions will be over. but we need to merge all tasks
-        # and return a different model
-        with platform_db_mgmt.db_mgmt.get_session() as session:
-            result = session.execute(query)
-            return result.scalars().all()
 
 
 def get_task(task_id: int) -> DBCollectionTask:

@@ -19,6 +19,7 @@ class EmptyModel(BaseModel):
     pass
 
 
+# todo turn to DBModelBase
 class DBModelBase(Generic[T], Base):
     """
     Generic base class for all database models that can be converted to Pydantic models
@@ -29,7 +30,7 @@ class DBModelBase(Generic[T], Base):
     def model(self) -> T:
         return self._pydantic_model.model_validate(self, from_attributes=True)
 
-
+# todo turn to DBModelBase
 class DBUser(Base):
     __tablename__ = 'user'
 
@@ -106,12 +107,11 @@ class DBPost(DBModelBase[PostModel]):
     post_type: Mapped[PostType] = mapped_column(Enum(PostType), nullable=False, default=PostType.REGULAR)
     content: Mapped[dict] = Column(JSON)
     date_collected: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    metadata_content: Mapped[dict] = Column(JSON)
 
     # todo: temp nullable
     collection_task_id: Mapped[int] = mapped_column(ForeignKey("collection_task.id"), nullable=True)
     collection_task: Mapped["DBCollectionTask"] = relationship(backref="posts")
-
-    # collection_step: Mapped[int] = mapped_column(Integer, nullable=True)
 
     # user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     # user: Mapped[DBUser] = relationship(back_populates="posts")
