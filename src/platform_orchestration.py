@@ -90,6 +90,9 @@ class PlatformOrchestrator:
         # Create tasks for each platform
         platform_tasks = []
         for platform, manager in self.platform_managers.items():
+            if not self.run_config.clients[platform].progress:
+                self.logger.info(f"Progress for platform: '{platform}' deactivated")
+                continue
             if platforms and platform not in platforms:
                 continue
             platform_tasks.append(manager.process_all_tasks())

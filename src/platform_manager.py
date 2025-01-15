@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
+from asyncio import sleep
+from random import randint
 from typing import Generic, TypeVar
 
 from src.clients.abstract_client import AbstractClient
 from src.clients.clients_models import ClientConfig, ClientTaskConfig
 from src.const import CollectionStatus
-from src.db.db_models import DBPost, DBCollectionTask, CollectionResult
+from src.db.db_models import CollectionResult
 from src.db.platform_db_mgmt import PlatformDB
 from tools.project_logging import get_logger
 
@@ -56,9 +57,13 @@ class PlatformManager(Generic[T_Client], ABC):
     async def process_all_tasks(self):
         """Process all pending tasks"""
         tasks = self.get_pending_tasks()
+        self.logger.info(f"Task queue: {len(tasks)}")
+        self._setup_client()
         for task in tasks:
-            self._setup_client()
             await self.process_task(task)
+            sleep_time = self.client.config.request_delay
+            sleep_time += randint(0, self.client.config.delay_randomize)
+            await sleep(sleep_time)
 
     async def process_task(self, task: ClientTaskConfig) -> CollectionResult:
         """Execute a single collection task"""
