@@ -1,9 +1,13 @@
+from pathlib import Path
+
+from databases.db_mgmt import DatabaseManager
+from databases.db_models import DBCollectionTask, DBPost
+from databases.external import DBConfig, SQliteConnection
 from src.const import BASE_DATA_PATH
-from src.db.db_mgmt import DatabaseConfig, DatabaseManager
 from sqlalchemy import select
 
-from src.db.db_models import DBPost, DBCollectionTask
 from tools.env_root import root
+
 
 def dupl(original, model):
     return model(**{
@@ -12,19 +16,20 @@ def dupl(original, model):
            and k != 'id'  # Skip primary key
     })
 
-def find_duplicates(db_config: DatabaseConfig, new_db_config: DatabaseConfig):
+
+def find_duplicates(db_config: DBConfig, new_db_config: DBConfig):
     db = DatabaseManager(db_config)
     new_db = DatabaseManager(new_db_config)
 
     with new_db.get_session() as new_session:
 
         with db.get_session() as session:
-            added_tasks:dict[str, DBCollectionTask] = {}
+            added_tasks: dict[str, DBCollectionTask] = {}
 
             q = select(DBPost, DBCollectionTask).where(DBPost.collection_task_id == DBCollectionTask.id)
             res = session.execute(q)
             for idx, a in enumerate(res):
-                #print(idx)
+                # print(idx)
                 new_post = dupl(a[0], DBPost)
                 new_session.add(new_post)
                 if a[1]:
@@ -41,6 +46,6 @@ def find_duplicates(db_config: DatabaseConfig, new_db_config: DatabaseConfig):
 
 if __name__ == "__main__":
     root(".")
-    existing = DatabaseConfig("sqlite", (BASE_DATA_PATH / "youtube.sqlite").as_posix())
-    new = DatabaseConfig("sqlite", (BASE_DATA_PATH / "new.sqlite").as_posix())
+    existing = DBConfig(db_connection=SQliteConnection(db_path=Path(BASE_DATA_PATH / "youtube.sqlite")))
+    new = DBConfig(db_connection=SQliteConnection(db_path=Path((BASE_DATA_PATH / "new.sqlite"))))
     find_duplicates(existing, new)

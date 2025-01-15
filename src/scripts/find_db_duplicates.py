@@ -1,11 +1,13 @@
 from sqlalchemy import select
+
+from databases.db_mgmt import DatabaseManager
+from databases.db_models import Base, DBPost
+from databases.external import DBConfig
 from src.const import BASE_DATA_PATH
-from src.db.db_mgmt import DatabaseConfig, DatabaseManager
-from src.db.db_models import Base, DBPost
 from tools.env_root import root
 
 
-def find_duplicates(db_config: DatabaseConfig, col: str, model: Base = DBPost, dry= False):
+def find_duplicates(db_config: DBConfig, col: str, model: Base = DBPost, dry= False):
     db = DatabaseManager(db_config)
 
     uniques = set()
@@ -29,4 +31,4 @@ def find_duplicates(db_config: DatabaseConfig, col: str, model: Base = DBPost, d
 
 if __name__ == "__main__":
     root(".")
-    find_duplicates(DatabaseConfig("sqlite", (BASE_DATA_PATH / "youtube.sqlite").as_posix()), "platform_id", dry=False)
+    find_duplicates(DBConfig("sqlite", (BASE_DATA_PATH / "youtube.sqlite").as_posix()), "platform_id", dry=False)

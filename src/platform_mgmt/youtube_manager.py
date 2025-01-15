@@ -1,11 +1,5 @@
-from asyncio import sleep
-from datetime import datetime
-
-from src.clients.clients_models import ClientConfig, ClientTaskConfig
+from src.clients.clients_models import ClientConfig
 from src.clients.instances.youtube_client import YoutubeClient, GoogleAPIKeySetting
-from src.const import CollectionStatus
-from src.db import db_funcs
-from src.db.db_models import DBPost, DBUser, DBCollectionTask
 from src.platform_manager import PlatformManager
 
 
@@ -87,20 +81,6 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
     #         self._update_task_status(task.id, CollectionStatus.ABORTED)
     #         raise e
 
-    def insert_users(self, users: set[DBUser]) -> None:
-        """Insert unique users/channels into database"""
-        if not users:
-            return
 
-        with self.db_mgmt.get_session() as session:
-            session.add_all(users)
-            session.commit()
-
-    def insert_posts(self, posts: list[DBPost]) -> int:
-        """Insert posts into database and return number of successfully added posts"""
-        if not posts:
-            return 0
-
-        return db_funcs.submit_posts(posts, self.db_mgmt)
 
 

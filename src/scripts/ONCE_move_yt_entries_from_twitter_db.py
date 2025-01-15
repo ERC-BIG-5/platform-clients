@@ -3,11 +3,12 @@ from typing import Optional, Any, Type
 
 from sqlalchemy import select, BinaryExpression, func
 
+from databases.db_mgmt import DatabaseManager
+from databases.db_models import Base, DBPost, DBCollectionTask
+from databases.external import DBConfig
 from src.const import BASE_DATA_PATH
-from src.db.db_mgmt import DatabaseConfig, DatabaseManager
-from src.db.db_models import DBPost, Base, DBCollectionTask
 
-conf = DatabaseConfig("sqlite", (BASE_DATA_PATH / "twitter.sqlite").as_posix(), Base)
+conf = DBConfig("sqlite", (BASE_DATA_PATH / "twitter.sqlite").as_posix())
 db = DatabaseManager(conf)
 
 def to_dict(item: Base, orm_cls: Type[Base]) -> dict:

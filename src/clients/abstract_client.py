@@ -1,13 +1,11 @@
-import asyncio
-import inspect
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import TypeVar, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel
 
+from databases.db_models import CollectionResult, DBPost, DBUser
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
-from src.db.db_models import DBPost, DBUser, CollectionResult
 from tools.project_logging import get_logger
 
 if TYPE_CHECKING:

@@ -12,10 +12,10 @@ from googleapiclient.errors import HttpError
 from pydantic import SecretStr, BaseModel, Field, field_validator, field_serializer
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from databases.db_models import DBPost, DBUser
 from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
 from src.const import ENV_FILE_PATH, PostType, CLIENTS_DATA_PATH
-from src.db.db_models import DBUser, DBPost
 from tools.project_logging import get_logger
 
 

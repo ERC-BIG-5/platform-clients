@@ -1,15 +1,16 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import select, func
-from src.const import BASE_DATA_PATH
-from src.db.db_mgmt import DatabaseConfig, DatabaseManager
-from src.db.db_models import DBPost, Base
-from src.misc.helper import get_posts_with_custom_conditions
 import pandas as pd
+from sqlalchemy import select, func
+
+from databases.db_mgmt import DatabaseManager
+from databases.db_models import DBPost
+from databases.external import DBConfig
+from src.const import BASE_DATA_PATH
 
 # todo. we have to use platform specific databases
-conf = DatabaseConfig("sqlite", (BASE_DATA_PATH / "youtube.sqlite").as_posix())
+conf = DBConfig("sqlite", (BASE_DATA_PATH / "youtube.sqlite").as_posix())
 db = DatabaseManager(conf)
 
 

@@ -1,24 +1,26 @@
-from datetime import datetime
 from typing import Optional
 
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
+from sqlalchemy import ScalarResult
 from sqlalchemy import select, BinaryExpression, func
 
-from src.const import BASE_DATA_PATH
-from src.db.db_mgmt import DatabaseConfig, DatabaseManager
-from src.db.db_models import DBPost, Base
-from sqlalchemy import ScalarResult
+from databases.db_mgmt import DatabaseManager
+from databases.db_models import DBPost
+from databases.external import DBConfig
+
 
 # conf = DatabaseConfig("sqlite", (BASE_DATA_PATH / "twitter.sqlite").as_posix())
 # db = DatabaseManager(conf)
 
 
-def get_posts_with_custom_conditions(platform: str,
-                         conditions: Optional[BinaryExpression | list[BinaryExpression]] = None
-                         ) -> ScalarResult[DBPost]:
-    with db.get_session() as session:
+def get_posts_with_custom_conditions(
+        platform: str,
+        db_config: DBConfig,
+        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None
+) -> ScalarResult[DBPost]:
+    db_manager = DatabaseManager(db_config)
+    db_manager.init_database()
+
+    with db_manager.get_session() as session:
         # Start with a base query
         query = select(DBPost)
 
@@ -30,6 +32,7 @@ def get_posts_with_custom_conditions(platform: str,
                 for condition in conditions:
                     query = query.where(condition)
             else:
+                assert conditions is not None
                 query = query.where(conditions)
 
         # Execute the query and return the results
@@ -37,11 +40,14 @@ def get_posts_with_custom_conditions(platform: str,
         return result.scalars()
 
 
-
 def get_posts_day_counts(platform: str,
+                         db_config: DBConfig,
                          conditions: Optional[BinaryExpression | list[BinaryExpression]] = None
                          ) -> list[DBPost]:
-    with db.get_session() as session:
+    db_manager = DatabaseManager(db_config)
+    db_manager.init_database()
+
+    with db_manager.get_session() as session:
         # Start with a base query
         query = select(
             func.date(DBPost.date_created).label('day'),
@@ -58,6 +64,7 @@ def get_posts_day_counts(platform: str,
                 for condition in conditions:
                     query = query.where(condition)
             else:
+                assert conditions is not None
                 query = query.where(conditions)
 
         # Execute the query and return the results

@@ -14,10 +14,10 @@ from twscrape import API
 from twscrape.account import Account
 from twscrape.api import API as TwitterAPI
 
+from databases.db_mgmt import DatabaseManager
+from databases.db_models import DBPost
+from databases.platform_db_mgmt import PlatformDB
 from src.const import ENV_FILE_PATH, BASE_DATA_PATH
-from src.db.db_mgmt import DatabaseManager
-from src.db.db_models import DBPost
-from src.db.platform_db_mgmt import PlatformDB
 
 
 class TwitterSetting(BaseSettings):

@@ -10,10 +10,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from twscrape import API
 from twscrape.api import API as TwitterAPI
 
+from databases.db_models import DBPost, DBUser
 from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings, ClientConfig
 from src.const import ENV_FILE_PATH, PostType
-from src.db.db_models import DBPost, DBUser
 
 
 class TwitterAuthSettings(BaseSettings):

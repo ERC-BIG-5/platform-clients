@@ -1,7 +1,8 @@
 import asyncio
-from src.platform_orchestration import PlatformOrchestrator
 
+from src.platform_orchestration import PlatformOrchestrator
 from tools.project_logging import get_logger
+
 def main():
     try:
         orchestrator = PlatformOrchestrator()

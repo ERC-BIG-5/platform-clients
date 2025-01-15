@@ -3,13 +3,17 @@ from typing import Dict, Type
 
 from sqlalchemy import exists
 
+from databases.db_mgmt import DatabaseManager
+from databases.db_models import DBPlatformDatabase
+from databases.model_conversion import PlatformDatabaseModel
+from databases.platform_db_mgmt import PlatformDB
 from src.clients.clients_models import ClientConfig, RunConfig
 from src.clients.task_groups import load_tasks
 from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config
-from src.db.db_mgmt import DatabaseManager
-from src.db.db_models import DBPlatformDatabase
-from src.db.model_conversion import PlatformDatabaseModel
-from src.db.platform_db_mgmt import PlatformDB
+# from src.db.db_mgmt import DatabaseManager
+# from src.db.db_models import DBPlatformDatabase
+# from src.db.model_conversion import PlatformDatabaseModel
+# from src.db.platform_db_mgmt import PlatformDB
 from src.platform_manager import PlatformManager
 from src.platform_mgmt.twitter_manager import TwitterManager
 from src.platform_mgmt.youtube_manager import YoutubeManager
