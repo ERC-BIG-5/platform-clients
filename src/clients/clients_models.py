@@ -66,6 +66,8 @@ class ClientConfig(BaseModel):
     model_config = {'extra': "forbid", "from_attributes": True}
     auth_config: Optional[dict[str, str]] = None
     request_delay: Optional[int] = 0
+    delay_randomize: Optional[int] = 0
+    progress: bool = True
     db_config: Optional[DBConfig] = None
 
 class RunConfig(BaseModel):

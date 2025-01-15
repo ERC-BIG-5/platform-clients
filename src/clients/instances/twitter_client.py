@@ -1,10 +1,9 @@
-from asyncio import get_event_loop
+import logging
 from contextlib import aclosing
 from datetime import datetime
 from typing import Optional, Protocol
 
 import orjson
-import time
 from pydantic import Field
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,8 +12,7 @@ from twscrape.api import API as TwitterAPI
 
 from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings, ClientConfig
-from src.const import ENV_FILE_PATH, PostType, CollectionStatus
-from src.db import db_funcs
+from src.const import ENV_FILE_PATH, PostType
 from src.db.db_models import DBPost, DBUser
 
 
@@ -31,7 +29,7 @@ class TwitterSearchParameters(BaseSettings):
     filter_replies: bool = True
     filter_quotes: bool = True
     from_time: Optional[datetime] = None
-    until_time: Optional[datetime] = None
+    to_time: Optional[datetime] = None
     limit: int = 100
 
     def build_query(self) -> str:
@@ -45,8 +43,8 @@ class TwitterSearchParameters(BaseSettings):
 
         if self.from_time:
             q += f" since:{self.from_time.strftime('%Y-%m-%d_%H:%M:%S_UTC')}"
-        if self.until_time:
-            q += f" until:{self.until_time.strftime('%Y-%m-%d_%H:%M:%S_UTC')}"
+        if self.to_time:
+            q += f" until:{self.to_time.strftime('%Y-%m-%d_%H:%M:%S_UTC')}"
 
         return q
 
@@ -66,6 +64,7 @@ class TwitterClient(AbstractClient):
         super().__init__(config)
         self.api: Optional[TwitterAPI] = None
         self.settings: Optional[TwitterAuthSettings] = None
+        self.logger = logging.getLogger(__file__)
 
     def setup(self):
         """Initialize the Twitter API client with authentication"""
@@ -79,6 +78,7 @@ class TwitterClient(AbstractClient):
 
         self.api = API()  # or API("path-to.db") for custom DB path
 
+
     async def initialize_auth(self):
         """Initialize authentication with Twitter"""
         if not self.api:
@@ -88,29 +88,31 @@ class TwitterClient(AbstractClient):
 
         if any(acc.username == self.settings.username for acc in accounts):
             self.logger.debug(f"Account {self.settings.username} already exists")
-            return
+        else:
+            # Add account credentials
+            await self.api.pool.add_account(
+                self.settings.username,
+                self.settings.password.get_secret_value(),
+                self.settings.email,
+                self.settings.password.get_secret_value()
+            )
+        for acc in accounts:
+            if not acc.active:
+                await self.api.pool.login(acc)
 
-        # Add account credentials
-        await self.api.pool.add_account(
-            self.settings.username,
-            self.settings.password.get_secret_value(),
-            self.settings.email,
-            self.settings.password.get_secret_value()
-        )
         # Login all accounts in the pool
-        await self.api.pool.login_all()
+        # todo, bring back?
+        # await self.api.pool.login_all()
 
     def transform_config(self, abstract_config: CollectConfig) -> TwitterSearchParameters:
         """Transform generic config to Twitter-specific parameters"""
+
         return TwitterSearchParameters.model_validate(abstract_config, from_attributes = True)
 
     async def collect(self, generic_config: CollectConfig) -> list[dict]:
         """Collect tweets based on search parameters"""
 
         config = self.transform_config(generic_config)
-
-        if not self.api:
-            await self.initialize_auth()
 
         tweets = []
         query = config.build_query()
