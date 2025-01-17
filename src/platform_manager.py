@@ -4,10 +4,10 @@ from random import randint
 from typing import Generic, TypeVar
 
 from databases.db_models import CollectionResult
+from databases.external import CollectionStatus
 from databases.platform_db_mgmt import PlatformDB
 from src.clients.abstract_client import AbstractClient
 from src.clients.clients_models import ClientConfig, ClientTaskConfig
-from src.const import CollectionStatus
 from tools.project_logging import get_logger
 
 T_Client = TypeVar('T_Client', bound=AbstractClient)

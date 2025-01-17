@@ -3,9 +3,9 @@ from datetime import datetime
 import time
 
 from databases.db_models import DBPost, DBCollectionTask
+from databases.external import CollectionStatus
 from src.clients.clients_models import ClientConfig, ClientTaskConfig
 from src.clients.instances.twitter_client import TwitterClient
-from src.const import CollectionStatus
 from src.platform_manager import PlatformManager
 from tools.project_logging import get_logger
 

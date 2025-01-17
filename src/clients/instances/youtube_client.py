@@ -13,9 +13,10 @@ from pydantic import SecretStr, BaseModel, Field, field_validator, field_seriali
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from databases.db_models import DBPost, DBUser
+from databases.external import PostType
 from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
-from src.const import ENV_FILE_PATH, PostType, CLIENTS_DATA_PATH
+from src.const import ENV_FILE_PATH, CLIENTS_DATA_PATH
 from tools.project_logging import get_logger
 
 

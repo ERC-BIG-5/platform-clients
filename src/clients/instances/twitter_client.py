@@ -11,9 +11,10 @@ from twscrape import API
 from twscrape.api import API as TwitterAPI
 
 from databases.db_models import DBPost, DBUser
+from databases.external import PostType
 from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings, ClientConfig
-from src.const import ENV_FILE_PATH, PostType
+from src.const import ENV_FILE_PATH
 
 
 class TwitterAuthSettings(BaseSettings):
@@ -86,9 +87,12 @@ class TwitterClient(AbstractClient):
 
         accounts = await self.api.pool.get_all()
 
-        if any(acc.username == self.settings.username for acc in accounts):
-            self.logger.debug(f"Account {self.settings.username} already exists")
-        else:
+        client_user = None
+        for acc in accounts:
+            if acc.username == self.settings.username:
+                client_user = acc
+                break
+        if not client_user:
             # Add account credentials
             await self.api.pool.add_account(
                 self.settings.username,
@@ -96,9 +100,10 @@ class TwitterClient(AbstractClient):
                 self.settings.email,
                 self.settings.password.get_secret_value()
             )
-        for acc in accounts:
-            if not acc.active:
-                await self.api.pool.login(acc)
+            client_user = await self.api.pool.get(self.settings.username)
+
+        if not client_user.active:
+            await self.api.pool.login(client_user)
 
         # Login all accounts in the pool
         # todo, bring back?
@@ -155,3 +160,4 @@ class TwitterClient(AbstractClient):
     @property
     def platform_name(self) -> str:
         return "twitter"
+

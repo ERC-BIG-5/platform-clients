@@ -8,7 +8,8 @@ from typing import Optional, Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator,ValidationInfo, SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.const import CollectionStatus, ENV_FILE_PATH, BASE_DATA_PATH
+from databases.external import CollectionStatus
+from src.const import ENV_FILE_PATH, BASE_DATA_PATH
 
 
 class EmptyModel(BaseModel):

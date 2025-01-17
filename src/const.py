@@ -1,13 +1,13 @@
-from enum import Enum, auto
-from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, BaseModel
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from tools.env_root import root
 from tools.files import read_data
 
-PROJECT_PATH = Path("/home/rsoleyma/projects/platforms-clients")
+# todo use root() again
+PROJECT_PATH = root()
 BASE_DATA_PATH = PROJECT_PATH / "data"
 MISC_PATH = BASE_DATA_PATH / "misc"
 CLIENTS_TASKS_PATH = BASE_DATA_PATH / "tasks"
@@ -22,6 +22,7 @@ MAIN_DIRS = [BASE_DATA_PATH, CLIENTS_TASKS_PATH, PROCESSED_TASKS_PATH, MISC_PATH
 for dir in MAIN_DIRS:
     dir.mkdir(exist_ok=True)
 
+
 class Big5Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
     run_config_file_name: str = Field(alias="RUN_CONFIG")
@@ -31,21 +32,9 @@ class Big5Config(BaseSettings):
     reset_db: bool = Field(alias="RESET_DB", default=False)
 
 
-
 BIG5_CONFIG = Big5Config()
 RUN_CONFIG = read_data(BASE_DATA_PATH / "_RUN_CONFIG" / BIG5_CONFIG.run_config_file_name)
 
+
 def read_run_config() -> dict:
     return read_data(BASE_DATA_PATH / "_RUN_CONFIG" / BIG5_CONFIG.run_config_file_name)
-
-class CollectionStatus(Enum):
-    INIT = auto()
-    ACTIVE = auto()  # started, but not currently running
-    RUNNING = auto()  # started and currently running
-    PAUSED = auto()  # if it's set to pause
-    ABORTED = auto()  # started and aborted
-    DONE = auto()  # started and finished
-
-class PostType(Enum):
-    REGULAR = auto()
-
