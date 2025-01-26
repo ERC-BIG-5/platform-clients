@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from asyncio import sleep
+from asyncio import sleep, CancelledError
 from random import randint
 from typing import Generic, TypeVar
 
@@ -59,11 +59,18 @@ class PlatformManager(Generic[T_Client], ABC):
         tasks = self.get_pending_tasks()
         self.logger.info(f"Task queue: {len(tasks)}")
         self._setup_client()
-        for task in tasks:
+        for idx,task in enumerate(tasks):
+            self.logger.debug(f"Processing task- platform:{task.platform}, id:{task.id}, {idx+1}/{len(tasks)}")
             await self.process_task(task)
+            # if not tasks[-1] == task:
             sleep_time = self.client.config.request_delay
             sleep_time += randint(0, self.client.config.delay_randomize)
-            await sleep(sleep_time)
+            try:
+                await sleep(sleep_time)
+            except (KeyboardInterrupt, CancelledError):
+                print("closing...")
+                break
+
 
     async def process_task(self, task: ClientTaskConfig) -> CollectionResult:
         """Execute a single collection task"""

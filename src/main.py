@@ -10,6 +10,8 @@ def main():
         orchestrator.check_new_client_tasks()
         # Progress all tasks
         asyncio.run(orchestrator.progress_tasks(None))
+    except KeyboardInterrupt:
+        print("bye bye")
     except Exception as e:
         get_logger(__name__).error(f"Error in main program flow: {str(e)}")
         raise

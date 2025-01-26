@@ -259,12 +259,9 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
     def __init__(self, config: ClientConfig):
         super().__init__(config)
         self.client: YoutubeResource = None
-        self.request_delay = 0
-        self.has_keys_available = True
         self.logger = get_logger(__name__)
         # todo refactor this into a superclass or interface
         self.path_config = YoutubePathConfig(pn=CLIENTS_DATA_PATH / self.platform_name)
-        pass
 
     def setup(self):
         # if self.config and self.config.auth_config:
@@ -371,12 +368,12 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
 
     def create_post_entry(self, post: dict, task: ClientTaskConfig) -> DBPost:
         return DBPost(
-            platform="youtube",
+            platform=self.platform_name,
             platform_id=post['id']['videoId'],
             post_url=f"https://www.youtube.com/v/{post['id']['videoId']}",
             date_created=pyrfc3339.parse(post["snippet"]["publishedAt"]),
-            date_collected=datetime.now(),
-            post_type=PostType.REGULAR,
+            date_collected=datetime.now(), # todo not required. db does it
+            post_type=PostType.REGULAR, # todo not required. db has default
             content=post,
             collection_task_id=task.id,
         )

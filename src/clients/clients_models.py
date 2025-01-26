@@ -75,6 +75,7 @@ class RunConfig(BaseModel):
     model_config = {'extra': "forbid", "from_attributes": True}
     clients: dict[str, ClientConfig]
 
+# todo carefull, this is also in databases
 class ClientTaskConfig(BaseModel):
     model_config = {'extra': "forbid", "from_attributes": True}
     task_name: str

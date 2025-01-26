@@ -26,7 +26,6 @@ class TwitterManager(PlatformManager[TwitterClient]):
         self._accounts_initialized = False
         self.logger = get_logger(__name__)
 
-
     async def _ensure_accounts_initialized(self):
         if not self._accounts_initialized:
             await self.client.initialize_auth()
@@ -35,7 +34,7 @@ class TwitterManager(PlatformManager[TwitterClient]):
     def _create_client(self, config: ClientConfig) -> TwitterClient:
         """Create and configure Twitter client"""
         if config and config.auth_config and not all(k in config.auth_config for k in
-                                             ['TWITTER_API_KEY', 'TWITTER_API_SECRET']):
+                                                     ['TWITTER_API_KEY', 'TWITTER_API_SECRET']):
             raise ValueError("Twitter client requires TWITTER_API_KEY and TWITTER_API_SECRET in auth_config")
         return TwitterClient(config)
 
@@ -85,7 +84,7 @@ class TwitterManager(PlatformManager[TwitterClient]):
             users = set()  # Use set to avoid duplicate users
 
             for item in collected_items:
-                # Create post entry (tweet)
+                # Create post-entry (tweet)
                 post = self.client.create_post_entry(item, task)
                 posts.append(post)
 
@@ -94,24 +93,15 @@ class TwitterManager(PlatformManager[TwitterClient]):
                     user = self.client.create_user_entry(item['user_data'])
                     users.add(user)
 
-            # Store in database
-            with self.platform_db.db_mgmt.get_session() as session:
-                # Add users first to establish relationships
-                session.add_all(users)
-                session.flush()
-
-                # Add posts
-                session.add_all(posts)
-
-                # Update task status
-                duration = (datetime.now() - start_time).total_seconds()
-                task_record = session.query(DBCollectionTask).get(task.id)
-                task_record.status = CollectionStatus.DONE
-                task_record.found_items = len(collected_items)
-                task_record.added_items = len(posts)
-                task_record.collection_duration = int(duration * 1000)
-
-                session.commit()
+            # Submit posts and users to database
+            posts = self.platform_db.db_mgmt.safe_submit_posts(posts)
+            # users...
+            duration = (datetime.now() - start_time).total_seconds()
+            self.platform_db.db_mgmt.update_task(task.id,
+                                                 CollectionStatus.DONE,
+                                                 len(collected_items),
+                                                 len(posts),
+                                                 duration)
 
             return posts
 

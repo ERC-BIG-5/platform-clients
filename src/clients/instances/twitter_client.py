@@ -111,7 +111,6 @@ class TwitterClient(AbstractClient):
 
     def transform_config(self, abstract_config: CollectConfig) -> TwitterSearchParameters:
         """Transform generic config to Twitter-specific parameters"""
-
         return TwitterSearchParameters.model_validate(abstract_config, from_attributes = True)
 
     async def collect(self, generic_config: CollectConfig) -> list[dict]:
@@ -130,6 +129,9 @@ class TwitterClient(AbstractClient):
                         break
 
             self.logger.info(f"Collected {len(tweets)} tweets for query: {query}")
+            # todo, check here if we are not authenticated anymore.
+            # manager should be notified, so it can trigger trying to login again (even tho, the client is doing it)
+
             return tweets
 
         except Exception as e:
@@ -137,7 +139,7 @@ class TwitterClient(AbstractClient):
             raise
 
     def create_post_entry(self, post: dict, task: ClientTaskConfig) -> DBPost:
-        """Create a database post entry from a tweet"""
+        """Create a database post-entry from a tweet"""
         # todo outsource the sanitazion hack with orjson and outsource
         return DBPost(
             platform="twitter",

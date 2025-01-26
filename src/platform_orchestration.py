@@ -110,14 +110,18 @@ class PlatformOrchestrator:
         :return: returns a list of task names
         """
         added_tasks = []
+        missing_platform_managers: set[str] = set()
         for file in CLIENTS_TASKS_PATH.glob("*.json"):
             # create collection_task models
-            group_config, tasks = load_tasks(file)
+            _, tasks = load_tasks(file)
             all_added = True
             for task in tasks:
+                if task.platform in missing_platform_managers:
+                    continue
                 if task.platform not in self.platform_managers:
                     self.logger.warning(f"No manager found for platform: {task.platform}")
                     all_added = False
+                    missing_platform_managers.add(task.platform)
                     continue
 
                 manager = self.platform_managers[task.platform]

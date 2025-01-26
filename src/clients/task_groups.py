@@ -78,13 +78,20 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
 
 def load_tasks(task_path: Path) -> tuple[Optional[ClientTaskGroupConfig], list[ClientTaskConfig]]:
     """
-    Load an validate a task file
+    Load a validate a task file
     :param task_path: absolute or relative path (to CLIENTS_TASKS_PATH)
     :return: task objects, or group (for permanent-storage) and client configs
     """
     abs_task_path = get_abs_path(task_path, CLIENTS_TASKS_PATH)
     data = read_data(abs_task_path)
     ct_cfg_err = None
+
+    if isinstance(data,list):
+        parsed_tasks = []
+        for task_data in data:
+            task = ClientTaskConfig.model_validate(task_data)
+            parsed_tasks.append(task)
+        return None, parsed_tasks # TODO TEMP
     try:
         return None, [ClientTaskConfig.model_validate(data)]
     except ValidationError as v_err:
