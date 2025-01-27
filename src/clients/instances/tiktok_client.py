@@ -51,35 +51,49 @@ class CriteriaModel(BaseModel):
     field_name: VideoFields
     field_values: list[Any]
 
+    def to_criteria(self) -> Criteria:
+        return Criteria(
+            field_name=self.field_name,
+            operation=self.operation,
+            field_values=self.field_values
+        )
+
 
 class QueryModel(BaseModel):
     and_: Optional[list[CriteriaModel]] = Field(default_factory=list, alias="and")
     or_: Optional[list[CriteriaModel]] = Field(default_factory=list, alias="or")
     not_: Optional[list[CriteriaModel]] = Field(default_factory=list, alias="not")
 
+    def to_query(self) -> Query:
+        return Query(
+            and_criteria=[criteria.to_criteria() for criteria in self.and_],
+            or_criteria=[criteria.to_criteria() for criteria in self.or_],
+            not_criteria=[criteria.to_criteria() for criteria in self.not_]
+        )
+
 
 class QueryVideoResult(BaseModel):
-    id: Optional[int]
-    video_description: Optional[str]
-    create_time: Optional[int]  # assuming ISO format timestamp
-    region_code: Optional[str]
-    share_count: Optional[int]
-    view_count: Optional[int]
-    like_count: Optional[int]
-    comment_count: Optional[int]
-    music_id: Optional[int]
-    hashtag_names: list[str]
-    username: Optional[str]
-    effect_ids: list[str]
-    playlist_id: Optional[int]
-    voice_to_text: Optional[Any]
-    is_stem_verified: Optional[bool]
+    id: int
+    video_description: Optional[str] = None
+    create_time: Optional[int] = None  # assuming ISO format timestamp
+    region_code: Optional[str] = None
+    share_count: Optional[int] = None
+    view_count: Optional[int] = None
+    like_count: Optional[int] = None
+    comment_count: Optional[int] = None
+    music_id: Optional[int] = None
+    hashtag_names: list[str] = None
+    username: Optional[str] = None
+    effect_ids: list[str] = None
+    playlist_id: Optional[int] = None
+    voice_to_text: Optional[Any] = None
+    is_stem_verified: Optional[bool] = None
     video_duration: Optional[int]  # in seconds
-    hashtag_info_list: list[TypedDict("hashtag_info_list", {"hashtag_id": int, "hashtag_name": str,
-                                                            "hashtag_description": str})]  # you might want to create a separate HashtagInfo model
-    video_mention_list: list[str]  # you might want to create a separate VideoMention model
+    hashtag_info_list: Optional[list[TypedDict("hashtag_info_list", {"hashtag_id": int, "hashtag_name": str,
+                                                                     "hashtag_description": str})]] = None  # you might want to create a separate HashtagInfo model
+    video_mention_list: Optional[list[str]] = None  # you might want to create a separate VideoMention model
     video_label: Optional[
-        TypedDict("video_label", {"type": int, "vote": bool, "warn": bool, "content": str, "sink": bool})]
+        TypedDict("video_label", {"type": int, "vote": bool, "warn": bool, "content": str, "sink": bool})] = None
 
     @property
     def video_url(self):
@@ -112,31 +126,34 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
                                         self.settings.RATE_LIMIT)
 
     def transform_config(self, abstract_config: CollectConfig) -> QueryVideoRequest:
-        start_time = datetime.strptime(abstract_config.from_time)
+        start_time = datetime.fromisoformat(abstract_config.from_time)
         start_time_s = start_time.strftime("%Y%m%d")
-        end_date = datetime.strptime(abstract_config.to_time)
+        end_date = datetime.fromisoformat(abstract_config.to_time)
         end_date_s = end_date.strftime("%Y%m%d")
 
-        query = QueryModel.model_validate(abstract_config.query)
-        query_dict = query.model_dump()
+        # keyword <- abstract_config.query
 
-        if not abstract_config.fields:
+        query = QueryModel.model_validate(abstract_config.query)
+        # query_dict = query.model_dump()
+
+        if not hasattr(abstract_config, "fields"):
             abstract_config.fields = PUBLIC_VIDEO_QUERY_FIELDS
         return QueryVideoRequest(start_date=start_time_s,
-                                 query=query_dict,
+                                 query=query.to_query(),
                                  end_date=end_date_s,
                                  fields=",".join(abstract_config.fields),
                                  max_count=min(100, abstract_config.limit),
                                  max_total=abstract_config.limit)
 
-    async def collect(self, collection_config: CollectConfig) -> list[dict]:
+    async def collect(self, collection_config: CollectConfig) -> list[QueryVideoResult]:
         config = self.transform_config(collection_config)
 
         all_videos = []
         while True:
             videos, search_id, cursor, has_more, start_date, end_date = self.client.query_videos(config,
                                                                                                  fetch_all_pages=True)
-            all_videos.extend(videos)
+            all_videos.extend([
+                QueryVideoResult.model_validate(v) for v in videos])
             if len(all_videos) >= config.max_total:
                 break
 
@@ -153,7 +170,3 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
 
     def create_user_entry(self, user: UserProfile) -> DBUser:
         return DBUser()
-
-    @property
-    def platform_name(self) -> str:
-        return "tiktok"

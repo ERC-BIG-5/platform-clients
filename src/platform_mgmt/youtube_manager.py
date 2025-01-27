@@ -12,6 +12,9 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
     - YouTube-specific data transformations
     """
 
+    def __init__(self, platform_name: str, client_config: ClientConfig):
+        super().__init__(platform_name, client_config)
+
     def _create_client(self, config: ClientConfig) -> YoutubeClient:
         """Create and configure YouTube client"""
         if config and config.auth_config and 'GOOGLE_API_KEY' not in config.auth_config:
@@ -19,6 +22,10 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
         else:
             config.auth_config = GoogleAPIKeySetting()
         return YoutubeClient(config)
+
+    def platform_name(self) -> str:
+        return "youtube"
+
 
     # async def execute_task(self, task: ClientTaskConfig) -> list[DBPost]:
     #     """

@@ -1,10 +1,11 @@
 import asyncio
-from typing import Dict, Type
+from typing import Dict, Type, Optional, TypeVar
 
 from sqlalchemy import exists
 
 from databases.db_mgmt import DatabaseManager
 from databases.db_models import DBPlatformDatabase
+from databases.external import DBConfig
 from databases.model_conversion import PlatformDatabaseModel
 from databases.platform_db_mgmt import PlatformDB
 from src.clients.clients_models import ClientConfig, RunConfig
@@ -15,6 +16,7 @@ from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TAS
 # from src.db.model_conversion import PlatformDatabaseModel
 # from src.db.platform_db_mgmt import PlatformDB
 from src.platform_manager import PlatformManager
+from src.platform_mgmt.tiktok_manager import TikTokManager
 from src.platform_mgmt.twitter_manager import TwitterManager
 from src.platform_mgmt.youtube_manager import YoutubeManager
 from tools.project_logging import get_logger
@@ -38,7 +40,7 @@ class PlatformOrchestrator:
             self.run_config = RunConfig.model_validate(read_run_config())
             self.main_db = DatabaseManager(DatabaseManager.get_main_db_config())
             self.logger = get_logger(__name__)
-            self.initialize_platform_managers(None)
+            self.initialize_platform_managers()
             self.__instance = self
 
     def _get_registered_platforms(self) -> list[PlatformDatabaseModel]:
@@ -46,46 +48,47 @@ class PlatformOrchestrator:
         with self.main_db.get_session() as session:
             return [o.model() for o in session.query(DBPlatformDatabase).all()]
 
-    def initialize_platform_managers(self, platforms: list[str] = None):
+    def initialize_platform_managers(self, config: Optional[RunConfig] = None):
+
         """Initialize managers for specified platforms or all registered platforms"""
+        if not config:
+            config = self.run_config
+
         registered_platforms = self._get_registered_platforms()
 
-        for platform_db in registered_platforms:
-            platform_name = platform_db.platform
-            if platforms and platform_name not in platforms:
-                continue
+        for platform in config.clients:
+            if platform not in [p.platform for p in registered_platforms]:
+                self.add_platform_db(platform, config.clients[platform].db_config)
+                # self.logger.warning(f"Platform '{platform}' not registered in main database")
 
-            # Get platform-specific manager class
-            manager_class = PLATFORM_MANAGERS.get(platform_name)
+            manager_class = PLATFORM_MANAGERS.get(platform)
             if not manager_class:
-                self.logger.warning(f"No manager implementation found for platform: {platform_name}")
-                continue
+                self.logger.error(
+                    f"No manager implementation found for platform: {platform}. "
+                    f"Add it to the platform_orchestration.py file: 'PLATFORM_MANAGERS'")
 
             client_config = ClientConfig.model_validate(
-                RUN_CONFIG["clients"][platform_name])
+                RUN_CONFIG["clients"][platform])
 
             # todo check main db, first for a default_db for platform, then use this
-            if not client_config.db_config:
-                client_config.db_config = PlatformDB.get_platform_default_db(platform_name)
+            # if not client_config.db_config:
+            #     client_config.db_config = PlatformDB.get_platform_default_db(platform)
 
             # Load from environment or config
             # Initialize platform manager
             try:
-                manager = manager_class(
-                    platform_name=platform_name,
-                    client_config=client_config,
-                )
-                self.platform_managers[platform_name] = manager
-                self.logger.debug(f"Initialized manager for platform: {platform_name}")
+                manager = manager_class(client_config)
+                self.platform_managers[platform] = manager
+                self.logger.debug(f"Initialized manager for platform: {platform}")
             except Exception as e:
-                self.logger.error(f"Failed to initialize manager for {platform_name}: {str(e)}")
+                self.logger.error(f"Failed to initialize manager for {platform}: {str(e)}")
                 raise e
 
-    def add_platform_db(self, platform: str, connection_str: str):
+    def add_platform_db(self, platform: str, db_config: DBConfig):
         with self.main_db.get_session() as session:
             if session.query(exists().where(DBPlatformDatabase.platform == platform)).scalar():
                 return
-            session.add(DBPlatformDatabase(platform=platform, connection_str=connection_str))
+            session.add(DBPlatformDatabase(platform=platform, connection_str=db_config.connection_str))
             session.commit()
 
     async def progress_tasks(self, platforms: list[str] = None):
@@ -142,9 +145,11 @@ class PlatformOrchestrator:
         return added_tasks
 
 
+T = TypeVar('T', bound=PlatformManager)
 # Register platform-specific managers
-PLATFORM_MANAGERS: Dict[str, Type[PlatformManager]] = {
+PLATFORM_MANAGERS: dict[str, Type[T]] = {
     "twitter": TwitterManager,
     "youtube": YoutubeManager,
+    "tiktok": TikTokManager
     # Add other platforms here
 }

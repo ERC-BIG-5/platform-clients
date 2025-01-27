@@ -17,7 +17,7 @@ def generate_timestamps(time_config: TimeConfig) -> list[datetime]:
     """Generate list of timestamps from start to end with given interval."""
     # there is also pd.date_range which can be tried out
     start = datetime.fromisoformat(time_config.start)
-    end = datetime.fromisoformat(time_config.end)
+    end = datetime.fromisoformat(time_config.end) # 2023-3-01
     interval = timedelta(**time_config.interval)
 
     timestamps = []
@@ -57,6 +57,7 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
             interval = timedelta(**config.time_config.interval)
             conf['from_time'] = timestamp.isoformat()
             conf['to_time'] = (timestamp + interval).isoformat()
+            conf["test_data"] = config.test_data
 
             concrete_config = {
                 "task_name": f"{config.group_prefix}_{task_no}",
@@ -65,7 +66,8 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
                 "database": config.database,
                 "transient": config.store_as_group,
                 "test": config.test,
-                "overwrite": config.overwrite
+                "overwrite": config.overwrite,
+
             }
             concrete_configs.append(ClientTaskConfig.model_validate(concrete_config))
             task_no += 1

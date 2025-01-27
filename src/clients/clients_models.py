@@ -8,7 +8,7 @@ from typing import Optional, Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator,ValidationInfo, SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from databases.external import CollectionStatus
+from databases.external import CollectionStatus, DBConfig
 from src.const import ENV_FILE_PATH, BASE_DATA_PATH
 
 
@@ -17,7 +17,7 @@ class EmptyModel(BaseModel):
 
 class CollectConfig(BaseModel):
     model_config = {'extra': "allow"}
-    query: Optional[str] = None
+    query: Optional[str | dict] = None
     limit: Optional[int] = math.inf
     from_time: Optional[str] = None
     to_time: Optional[str] = None
@@ -45,23 +45,23 @@ class PostgresConnection(BaseModel):
     db_host: str
     db_port: int = 5432
 
-class DBConfig(BaseModel):
-    model_config = {'extra': "forbid", "from_attributes": True}
-    db_connection: SQliteConnection | PostgresConnection
-    name: Optional[str] = None
-    is_default: bool = Field(False)
-    reset_db: bool = False
-
-    @computed_field
-    @property
-    def connection_str(self) -> str:
-        return self.db_connection.connection_str
-
-    @computed_field
-    @property
-    def db_type(self)-> Literal["sqlite","postegres"]:
-        return "sqlite" if isinstance(self.db_connection, SQliteConnection) else "postgres"
-
+# class DBConfig(BaseModel):
+#     model_config = {'extra': "forbid", "from_attributes": True}
+#     db_connection: SQliteConnection | PostgresConnection
+#     name: Optional[str] = None
+#     is_default: bool = Field(False)
+#     reset_db: bool = False
+#
+#     @computed_field
+#     @property
+#     def connection_str(self) -> str:
+#         return self.db_connection.connection_str
+#
+#     @computed_field
+#     @property
+#     def db_type(self)-> Literal["sqlite","postegres"]:
+#         return "sqlite" if isinstance(self.db_connection, SQliteConnection) else "postgres"
+#
 
 class ClientConfig(BaseModel):
     model_config = {'extra': "forbid", "from_attributes": True}
@@ -75,7 +75,7 @@ class RunConfig(BaseModel):
     model_config = {'extra': "forbid", "from_attributes": True}
     clients: dict[str, ClientConfig]
 
-# todo carefull, this is also in databases
+# todo careful, this is also in databases??, qye? and??
 class ClientTaskConfig(BaseModel):
     model_config = {'extra': "forbid", "from_attributes": True}
     task_name: str
@@ -88,6 +88,7 @@ class ClientTaskConfig(BaseModel):
     #
     test: bool = False
     overwrite: bool = False
+
     #
     status: CollectionStatus = Field(CollectionStatus.INIT, init=False)
     time_added: Optional[datetime] = Field(None, init=False)
@@ -115,6 +116,7 @@ class ClientTaskGroupConfig(BaseModel):
 
     test: bool = False
     overwrite: bool = False
+    test_data: Optional[list[dict]] = None
 
     # todo. why is this not called?!
     @field_validator("database", mode="before")

@@ -159,7 +159,3 @@ class TwitterClient(AbstractClient):
             platform_username=user.get('username')
         )
 
-    @property
-    def platform_name(self) -> str:
-        return "twitter"
-

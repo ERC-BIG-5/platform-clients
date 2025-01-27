@@ -21,7 +21,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
     def __init__(self, config: ClientConfig):
         self.config = config
         self._task_queue: list[ClientTaskConfig] = []
-        self.manager: Optional["PlatformManager"]
+        self.manager: Optional[PlatformManager] = None
         self.logger = get_logger(__name__)
 
     @abstractmethod
@@ -96,6 +96,5 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         pass
 
     @property
-    @abstractmethod
     def platform_name(self) -> str:
-        pass
+        return self.manager.platform_name

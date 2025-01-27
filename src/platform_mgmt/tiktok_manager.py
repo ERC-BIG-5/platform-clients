@@ -3,9 +3,14 @@ from src.clients.instances.tiktok_client import TikTokClient
 from src.platform_manager import PlatformManager, T_Client
 
 
-class TwitterManager(PlatformManager[TikTokClient]):
+class TikTokManager(PlatformManager[TikTokClient]):
 
 
-    def _create_client(self, config: ClientConfig) -> T_Client:
-        pass
+    def __init__(self, config:ClientConfig, **kwargs):
+        super().__init__("tiktok", config, **kwargs)
 
+    def _create_client(self, config: ClientConfig) -> TikTokClient:
+        return TikTokClient(config)
+
+    def platform_name(self) -> str:
+        return "tiktok"

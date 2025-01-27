@@ -316,10 +316,10 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
                 print(f"An HTTP error {e.resp.status} occurred:\n{e.content.decode('utf-8')}")
                 break
 
-        search_result_items = list(more_itertools.unique_everseen(search_result_items, key=lambda i: i["id"]["videoId"]))
+        search_result_items = list(
+            more_itertools.unique_everseen(search_result_items, key=lambda i: i["id"]["videoId"]))
         self.logger.info(f"# uniuue response items: {len(search_result_items)}; num pages: {pages}")
         video_ids = [_["id"]["videoId"] for _ in search_result_items]
-
 
         all_videos_results = []
         for batch in itertools.batched(video_ids, 50):
@@ -372,20 +372,14 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             platform_id=post['id']['videoId'],
             post_url=f"https://www.youtube.com/v/{post['id']['videoId']}",
             date_created=pyrfc3339.parse(post["snippet"]["publishedAt"]),
-            date_collected=datetime.now(), # todo not required. db does it
-            post_type=PostType.REGULAR, # todo not required. db has default
+            date_collected=datetime.now(),  # todo not required. db does it
+            post_type=PostType.REGULAR,  # todo not required. db has default
             content=post,
             collection_task_id=task.id,
         )
 
     def create_user_entry(self, user: UserEntry) -> DBUser:
         pass
-
-    @property
-    def platform_name(self) -> str:
-        return "youtube"
-
-    from pathlib import Path
 
     # Function to download and convert a YouTube video to MP3 format using yt-dlp
     def download_video_as_mp3(self, video_id) -> Path | None:

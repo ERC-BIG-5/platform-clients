@@ -23,7 +23,7 @@ class PlatformManager(Generic[T_Client], ABC):
     Each platform should implement its own subclass of PlatformManager.
     """
 
-    def __init__(self, platform_name: str, client_config: ClientConfig):
+    def __init__(self, platform_name: str, client_config: ClientConfig, **kwargs):
         self.platform_name = platform_name
         self.client = self._create_client(client_config)
 
@@ -83,3 +83,7 @@ class PlatformManager(Generic[T_Client], ABC):
         except Exception as e:
             self.platform_db.update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
+
+    @property
+    @abstractmethod
+    def platform_name(self) -> str: ...

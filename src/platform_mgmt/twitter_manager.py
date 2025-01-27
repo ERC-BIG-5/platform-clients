@@ -18,8 +18,8 @@ class TwitterManager(PlatformManager[TwitterClient]):
     - Tweet collection and processing
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config,   **kwargs):
+        super().__init__("twitter",config, **kwargs)
         self.rate_limit_window = 900  # 15 minutes in seconds
         self.rate_limit_requests = 180  # Requests per window
         self.request_timestamps: list[float] = []
@@ -109,3 +109,6 @@ class TwitterManager(PlatformManager[TwitterClient]):
             self.logger.error(f"Error executing Twitter task {task.task_name}: {str(e)}")
             self.platform_db.update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
+
+    def platform_name(self) -> str:
+        return "twitter"
