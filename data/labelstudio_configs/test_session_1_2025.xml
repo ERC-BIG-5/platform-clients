@@ -55,21 +55,21 @@
             <Choice value="Text Yes/ Media Yes" alias="tm"/>
         </Choices>
 
-        <Header value="Is there any Value Expression (either in the text or in the media content)?"/>
+        <Header value="Is there any Nature Value Expression (either in the text or in the media content)?"/>
         <Choices name="any_value_expression" toName="title" showInline="true">
             <Choice value="No"/>
             <Choice value="Yes"/>
         </Choices>
 
         <View visibleWhen="choice-selected" whenTagName="any_value_expression" whenChoiceValue="Yes" required="true">
-            <Header value="Text Value Expression?"/>
+            <Header value="Nature Value Expression in Text"/>
             <Choices name="text_value_expression" toName="title" showInline="true">
                 <Choice value="None"/>
                 <Choice value="Implicit"/>
                 <Choice value="Explicit"/>
             </Choices>
 
-            <Header value="Media Value Expression?"/>
+            <Header value="Nature Value Expression in Media content"/>
             <Choices name="media_value_expression" toName="title" required="true" showInline="true">
                 <Choice value="None"/>
                 <Choice value="Implicit"/>
@@ -135,10 +135,10 @@
             </Collapse>
 
             <View visibleWhen="choice-selected" whenTagName="any_stewardship" whenChoiceValue="t,m,tm">
-                <Header>Stewardship Action</Header>
+                <Header>Human-Nature Action</Header>
                 <Collapse bordered="true" accordion="true">
-                    <Panel value="Type of Stewardship Action 1">
-                        <Text value="Type of Stewardship Action" name="sa_0_t"/>
+                    <Panel value="Type of Human-Nature Action 1">
+                        <Text value="Type of Human-Nature Action" name="sa_0_t"/>
                         <Choices name="sa_0" toName="title" showInline="true">
                             <Choice value="Preservation"/>
                             <Choice value="Restoration"/>
@@ -157,14 +157,14 @@
                             <TextArea name="sa_other_0" toName="title" editable="true"/>
                         </View>
 
-                        <Text value="Stewardship Action in Text" name="sa_t_0_t"/>
+                        <Text value="Human-Nature Action in Text" name="sa_t_0_t"/>
                         <Choices name="sa_t_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
                         </Choices>
 
                         <View visibleWhen="choice-selected" whenTagName="sa_t_0" whenChoiceValue="No">
-                            <Text value="Stewardship Action in Media" name="sa_m_0_t"/>
+                            <Text value="Human-Nature Action in Media" name="sa_m_0_t"/>
                             <Choices name="sa_m_0" toName="title" showInline="true">
                                 <Choice value="Yes"/>
                                 <Choice value="No"/>
