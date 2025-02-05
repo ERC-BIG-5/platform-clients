@@ -55,7 +55,6 @@
             <Choice value="Text Yes/ Media Yes" alias="tm"/>
         </Choices>
 
-
         <Header value="Is there any Value Expression (either in the text or in the media content)?"/>
         <Choices name="any_value_expression" toName="title" showInline="true">
             <Choice value="No"/>
@@ -88,8 +87,8 @@
 
             <Header>Nature Element</Header>
             <Collapse bordered="true" accordion="true">
-                <Panel value="Type of Nature Element 1">
-                    <Text value="Type of nature element in text" name="ne_ty_0_t"/>
+                <Panel value="Type of Nature Element/Process 1">
+                    <Text value="Type of nature element/process in text" name="ne_ty_0_t"/>
                     <Choices name="ne_0" toName="title" showInline="true">
                         <Choice value="Material"/>
                         <Choice value="Immaterial"/>
@@ -97,11 +96,20 @@
                         <Choice value="Abiotic"/>
                         <Choice value="Artificial surfaces"/>
                         <Choice value="Agricultural areas"/>
-                        <Choice value="Forest and seminaturalareas"/>
+                        <Choice value="Forest and semi-natural areas"/>
                         <Choice value="Wetlands"/>
                         <Choice value="Water bodies"/>
                         <Choice value="Human"/>
+                        <Choice value="Positive"/>
+                        <Choice value="Negative"/>
+                        <Choice value="Other"/>
                     </Choices>
+
+                    <View visibleWhen="choice-selected" whenTagName="ne_0" whenChoiceValue="Other">
+                        <Text value="Specify the type of nature element/process" name="ne_other_0_t"/>
+                        <TextArea name="ne_other_0" toName="title" editable="true"/>
+                    </View>
+
                     <Text value="Nature Element in Text" name="ne_t_0_t"/>
                     <Choices name="ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
@@ -138,8 +146,17 @@
                             <Choice value="Advocacy"/>
                             <Choice value="Education"/>
                             <Choice value="Monitoring"/>
-                            <Choice value="Informal enforcement"/>
+                            <Choice value="Posing"/>
+                            <Choice value="Jogging"/>
+                            <Choice value="Picnic"/>
+                            <Choice value="Other"/>
                         </Choices>
+
+                        <View visibleWhen="choice-selected" whenTagName="sa_0" whenChoiceValue="Other">
+                            <Text value="Specify the type of stewardship action" name="sa_other_0_t"/>
+                            <TextArea name="sa_other_0" toName="title" editable="true"/>
+                        </View>
+
                         <Text value="Stewardship Action in Text" name="sa_t_0_t"/>
                         <Choices name="sa_t_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
