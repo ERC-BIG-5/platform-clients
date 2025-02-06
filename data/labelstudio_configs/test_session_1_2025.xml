@@ -57,7 +57,7 @@
         </Choices>
     </View>
     <View visibleWhen="choice-selected" whenTagName="any_nature" whenChoiceValue="t,m,tm">
-        <Header value="Is there a Stewardship Action?"/>
+        <Header value="Is there a Human-Nature Action?"/>
         <Choices name="any_stewardship" toName="title">
             <Choice value="Text No / Media No" alias="-"/>
             <Choice value="Text Yes / Media No" alias="t"/>
@@ -90,16 +90,16 @@
                 <Choice value="Media 3"/>
                 <Choice value="Media 4"/>
             </Choices>
-            <Header>Nature Element</Header>
+            <Header>Nature Element/Process </Header>
             <Collapse bordered="true" accordion="true">
                 <Panel value="Material">
-                    <Text value="Nature Element 'Material' in Text" name="Material--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Material' in Text" name="Material--ne_t_0_t"/>
                     <Choices name="Material--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Material--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Material' in media" name="Material--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Material' in media" name="Material--ne_m_0_t"/>
                         <Choices name="Material--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -114,13 +114,13 @@
                     </View>
                 </Panel>
                 <Panel value="Immaterial">
-                    <Text value="Nature Element 'Immaterial' in Text" name="Immaterial--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Immaterial' in Text" name="Immaterial--ne_t_0_t"/>
                     <Choices name="Immaterial--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Immaterial--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Immaterial' in media" name="Immaterial--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Immaterial' in media" name="Immaterial--ne_m_0_t"/>
                         <Choices name="Immaterial--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -135,13 +135,13 @@
                     </View>
                 </Panel>
                 <Panel value="Biotic">
-                    <Text value="Nature Element 'Biotic' in Text" name="Biotic--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Biotic' in Text" name="Biotic--ne_t_0_t"/>
                     <Choices name="Biotic--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Biotic--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Biotic' in media" name="Biotic--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Biotic' in media" name="Biotic--ne_m_0_t"/>
                         <Choices name="Biotic--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -156,13 +156,13 @@
                     </View>
                 </Panel>
                 <Panel value="Abiotic">
-                    <Text value="Nature Element 'Abiotic' in Text" name="Abiotic--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Abiotic' in Text" name="Abiotic--ne_t_0_t"/>
                     <Choices name="Abiotic--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Abiotic--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Abiotic' in media" name="Abiotic--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Abiotic' in media" name="Abiotic--ne_m_0_t"/>
                         <Choices name="Abiotic--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -177,13 +177,13 @@
                     </View>
                 </Panel>
                 <Panel value="Artificial surfaces">
-                    <Text value="Nature Element 'Artificial surfaces' in Text" name="Artificial surfaces--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Artificial surfaces' in Text" name="Artificial surfaces--ne_t_0_t"/>
                     <Choices name="Artificial surfaces--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Artificial surfaces--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Artificial surfaces' in media"
+                        <Text value="Nature Element/Process 'Artificial surfaces' in media"
                               name="Artificial surfaces--ne_m_0_t"/>
                         <Choices name="Artificial surfaces--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
@@ -200,13 +200,13 @@
                     </View>
                 </Panel>
                 <Panel value="Agricultural areas">
-                    <Text value="Nature Element 'Agricultural areas' in Text" name="Agricultural areas--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Agricultural areas' in Text" name="Agricultural areas--ne_t_0_t"/>
                     <Choices name="Agricultural areas--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Agricultural areas--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Agricultural areas' in media" name="Agricultural areas--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Agricultural areas' in media" name="Agricultural areas--ne_m_0_t"/>
                         <Choices name="Agricultural areas--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -222,7 +222,7 @@
                     </View>
                 </Panel>
                 <Panel value="Forest and seminatural areas">
-                    <Text value="Nature Element 'Forest and seminatural areas' in Text"
+                    <Text value="Nature Element/Process 'Forest and seminatural areas' in Text"
                           name="Forest and seminatural areas--ne_t_0_t"/>
                     <Choices name="Forest and seminatural areas--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
@@ -230,7 +230,7 @@
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Forest and seminatural areas--ne_t_0"
                           whenChoiceValue="No">
-                        <Text value="Nature Element 'Forest and seminatural areas' in media"
+                        <Text value="Nature Element/Process 'Forest and seminatural areas' in media"
                               name="Forest and seminatural areas--ne_m_0_t"/>
                         <Choices name="Forest and seminatural areas--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
@@ -248,13 +248,13 @@
                     </View>
                 </Panel>
                 <Panel value="Wetlands">
-                    <Text value="Nature Element 'Wetlands' in Text" name="Wetlands--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Wetlands' in Text" name="Wetlands--ne_t_0_t"/>
                     <Choices name="Wetlands--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Wetlands--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Wetlands' in media" name="Wetlands--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Wetlands' in media" name="Wetlands--ne_m_0_t"/>
                         <Choices name="Wetlands--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -269,13 +269,13 @@
                     </View>
                 </Panel>
                 <Panel value="Water bodies">
-                    <Text value="Nature Element 'Water bodies' in Text" name="Water bodies--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Water bodies' in Text" name="Water bodies--ne_t_0_t"/>
                     <Choices name="Water bodies--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Water bodies--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Water bodies' in media" name="Water bodies--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Water bodies' in media" name="Water bodies--ne_m_0_t"/>
                         <Choices name="Water bodies--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -290,13 +290,13 @@
                     </View>
                 </Panel>
                 <Panel value="Human">
-                    <Text value="Nature Element 'Human' in Text" name="Human--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Human' in Text" name="Human--ne_t_0_t"/>
                     <Choices name="Human--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Human--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Human' in media" name="Human--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Human' in media" name="Human--ne_m_0_t"/>
                         <Choices name="Human--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -311,13 +311,13 @@
                     </View>
                 </Panel>
                 <Panel value="Positive">
-                    <Text value="Nature Element 'Positive' in Text" name="Positive--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Positive' in Text" name="Positive--ne_t_0_t"/>
                     <Choices name="Positive--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Positive--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Positive' in media" name="Positive--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Positive' in media" name="Positive--ne_m_0_t"/>
                         <Choices name="Positive--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -332,13 +332,13 @@
                     </View>
                 </Panel>
                 <Panel value="Negative">
-                    <Text value="Nature Element 'Negative' in Text" name="Negative--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Negative' in Text" name="Negative--ne_t_0_t"/>
                     <Choices name="Negative--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Negative--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Negative' in media" name="Negative--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Negative' in media" name="Negative--ne_m_0_t"/>
                         <Choices name="Negative--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -353,15 +353,15 @@
                     </View>
                 </Panel>
                 <Panel value="Other">
-                    <Text value="Name the Other Nature Element" name="ne_o_0_t"/>
+                    <Text value="Name the Other Nature Element/Process" name="ne_o_0_t"/>
                     <TextArea name="ne_o_t_0_t" toName="title"/>
-                    <Text value="Nature Element 'Other' in Text" name="Other--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Other' in Text" name="Other--ne_t_0_t"/>
                     <Choices name="Other--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Other--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element 'Other' in media" name="Other--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Other' in media" name="Other--ne_m_0_t"/>
                         <Choices name="Other--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
