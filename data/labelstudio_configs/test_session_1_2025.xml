@@ -1,52 +1,70 @@
 <View>
-    <Header value="Text content"/>
-    <Text name="title" value="$text_1" selectionEnabled="false"/>
-    <HyperText name="gap1" value="">
-        <br/>
-    </HyperText>
-    <Text name="description" value="$text_2" selectionEnabled="false"/>
-   <Text name="language_t" value="Detected language (Youtube): " selectionEnabled="false"/>
-    <Text name="language" value="$language" selectionEnabled="false"/>
-    <HyperText name="gap2" value="">
-        <br/>
-    </HyperText>
-    <HyperText name="video" width="540" height="auto" value="$video_embedd"/>
-    <HyperText name="video_link" value="">
-        <a href="$video_url" target="_blank">YOUTUBE VIDEOLINK</a>
-    </HyperText>
-
-    <Header value="Media content"/>
-    <View style="display: flex; flex-wrap: wrap;">
-        <View>
-            <Text value="Media 1" name="media_1_l"/>
-            <Image width="640px" valueList="$img_1" name="img_1" zoomControl="false"/>
-        </View>
-        <View>
-            <Text value="Media 2" name="media_2_l"/>
-            <Image width="640px" valueList="$img_2" name="img_2" zoomControl="false"/>
-        </View>
-        <View>
-            <Text value="Media 3" name="media_3_l"/>
-            <Image width="640px" valueList="$img_3" name="img_3" zoomControl="false"/>
-        </View>
-        <View>
-            <Text value="Media 4" name="media_4_l"/>
-            <Image width="640px" valueList="$img_4" name="img_4" zoomControl="false"/>
-        </View>
+    <Style>.source_view .lsf-richtext__line {font-size: 20px;}</Style>
+    <View className="source_view" style="display: flex; color: orchid; font-style: italic;">
+        <Text name="source_t" value="Platform: "/>
+        <Text name="source" value="$source"/>
+        <Text name="p_id_t" value="Platform id :"/>
+        <Text name="p_id_v" value="$platform_id"/>
     </View>
-    <Header value="Is there any harmful content?"/>
-    <Choices name="any_harmful" toName="title" showInline="true" choice="multiple">
-        <Choice value="Text"/>
-        <Choice value="Media 1"/>
-        <Choice value="Media 2"/>
-        <Choice value="Media 3"/>
-        <Choice value="Media 4"/>
-    </Choices>
-    <Header value="If there is some language indicated (youtube tasks). Is it correct?"/>
+    <Style>.title_view .lsf-richtext__line {font-size: 22px;}</Style>
+    <View className="title_view">
+        <Header value="Text content"/>
+        <Text name="title" value="$text_1" selectionEnabled="false" id="title_text"/>
+        <Text name="gap0" value=" "/>
+        <Text name="description" value="$text_2" selectionEnabled="false"/>
+    </View>
+    <Header value="Video (only YouTube)"/>
+    <HyperText name="video" width="540" height="auto" value="$video_embedd" inline="true"/>
+    <HyperText name="video_link" value="" inline="true" clickableLinks="true">
+        <a href="$video_url" target="_blank">YOUTUBE LINK</a>
+    </HyperText>
+    <View className="language_detection_block" style="display: flex; ">
+        <Text name="language_t" value="Detected language (only for Youtube): " selectionEnabled="false"/>
+        <Text name="language" value="$language" selectionEnabled="false"/>
+    </View>
+    <Text name="lang_correct" value="Is the language of the text as detected correctly (only for youtube)?"/>
     <Choices name="language_correct" toName="language" showInline="true">
         <Choice value="No"/>
         <Choice value="Yes"/>
     </Choices>
+
+    <Header value="Images (only for Twitter)"/>
+    <View style="display: flex; flex-wrap: wrap;">
+        <View>
+            <Text value="Image 1" name="media_1_l"/>
+            <Image width="640px" valueList="$img_1" name="img_1" zoomControl="false"/>
+        </View>
+        <View>
+            <Text value="Image 2" name="media_2_l"/>
+            <Image width="640px" valueList="$img_2" name="img_2" zoomControl="false"/>
+        </View>
+        <View>
+            <Text value="Image 3" name="media_3_l"/>
+            <Image width="640px" valueList="$img_3" name="img_3" zoomControl="false"/>
+        </View>
+        <View>
+            <Text value="Image 4" name="media_4_l"/>
+            <Image width="640px" valueList="$img_4" name="img_4" zoomControl="false"/>
+        </View>
+    </View>
+
+    <View>
+        <Header value="Is there any harmful content?"/>
+        <Choices name="any_harmful" toName="title" showInline="true" choice="multiple">
+            <Choice value="Text"/>
+            <Choice value="Video"/>
+            <Choice value="Image 1"/>
+            <Choice value="Image 2"/>
+            <Choice value="Image 3"/>
+            <Choice value="Image 4"/>
+        </Choices>
+        <View visibleWhen="choice-selected" whenTagName="any_harmful"
+              whenChoiceValue="Text,Video,Image 1,Image 2,Image 3,Image 4">
+            <Text name="harmful_detail_t" value="Why is this content harmful?"/>
+            <TextArea name="harmful_detail" toName="title"/>
+        </View>
+    </View>
+
     <View>
         <Header value="Is there Nature?"/>
         <Choices name="any_nature" toName="title">
@@ -55,8 +73,23 @@
             <Choice value="Text No / Media Yes" alias="m"/>
             <Choice value="Text Yes/ Media Yes" alias="tm"/>
         </Choices>
+        <Header value="Do you want to mark this task for the 'coding game'?"/>
+        <Choices name="for_coding_game" toName="title" showInline="true">
+            <Choice value="No"/>
+            <Choice value="Yes"/>
+        </Choices>
+    </View>
+    <View visibleWhen="choice-selected" whenTagName="any_nature" whenChoiceValue="m,tm">
+        <Text name="rel_media" value="Select relevant Images (Twitter only)" selectionEnabled="false"/>
+        <Choices name="media_relevant" toName="title" choice="multiple" showInline="true">
+            <Choice value="Image 1"/>
+            <Choice value="Image 2"/>
+            <Choice value="Image 3"/>
+            <Choice value="Image 4"/>
+        </Choices>
     </View>
     <View visibleWhen="choice-selected" whenTagName="any_nature" whenChoiceValue="t,m,tm">
+
         <Header value="Is there a Human-Nature Action?"/>
         <Choices name="any_stewardship" toName="title">
             <Choice value="Text No / Media No" alias="-"/>
@@ -69,7 +102,7 @@
             <Choice value="No"/>
             <Choice value="Yes"/>
         </Choices>
-        <View visibleWhen="choice-selected" whenTagName="any_value_expression" whenChoiceValue="Yes" required="true">
+        <View visibleWhen="choice-selected" whenTagName="any_value_expression" whenChoiceValue="Yes" required="false">
             <Header value="Nature Value Expression in Text"/>
             <Choices name="text_value_expression" toName="title" showInline="true">
                 <Choice value="None"/>
@@ -77,20 +110,13 @@
                 <Choice value="Explicit"/>
             </Choices>
             <Header value="Nature Value Expression in Media content"/>
-            <Choices name="media_value_expression" toName="title" required="true" showInline="true">
+            <Choices name="media_value_expression" toName="title" required="false" showInline="true">
                 <Choice value="None"/>
                 <Choice value="Implicit"/>
                 <Choice value="Explicit"/>
             </Choices>
-            <Header value="Relevant Media"/>
-            <Text name="rel_media" value="Select relevant Media items" selectionEnabled="false"/>
-            <Choices name="media_relevant" toName="title" required="true" choice="multiple" showInline="true">
-                <Choice value="Media 1"/>
-                <Choice value="Media 2"/>
-                <Choice value="Media 3"/>
-                <Choice value="Media 4"/>
-            </Choices>
-            <Header>Nature Element/Process </Header>
+
+            <Header>Nature Element/Process</Header>
             <Collapse bordered="true" accordion="true">
                 <Panel value="Material">
                     <Text value="Nature Element/Process 'Material' in Text" name="Material--ne_t_0_t"/>
@@ -106,7 +132,8 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Material--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Material' in Text" name="Material--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process 'Material' in Text"
+                              name="Material--ne_m_rej_0_t"/>
                         <Choices name="Material--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -127,7 +154,8 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Immaterial--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Immaterial' in Text" name="Immaterial--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process  'Immaterial' in Text"
+                              name="Immaterial--ne_m_rej_0_t"/>
                         <Choices name="Immaterial--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -148,7 +176,8 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Biotic--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Biotic' in Text" name="Biotic--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process  'Biotic' in Text"
+                              name="Biotic--ne_m_rej_0_t"/>
                         <Choices name="Biotic--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -169,7 +198,8 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Abiotic--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Abiotic' in Text" name="Abiotic--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process  'Abiotic' in Text"
+                              name="Abiotic--ne_m_rej_0_t"/>
                         <Choices name="Abiotic--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -177,7 +207,8 @@
                     </View>
                 </Panel>
                 <Panel value="Artificial surfaces">
-                    <Text value="Nature Element/Process 'Artificial surfaces' in Text" name="Artificial surfaces--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Artificial surfaces' in Text"
+                          name="Artificial surfaces--ne_t_0_t"/>
                     <Choices name="Artificial surfaces--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
@@ -191,7 +222,7 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Artificial surfaces--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Artificial surfaces' in Text"
+                        <Text value="Media rejects Nature Element/Process  'Artificial surfaces' in Text"
                               name="Artificial surfaces--ne_m_rej_0_t"/>
                         <Choices name="Artificial surfaces--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
@@ -200,20 +231,22 @@
                     </View>
                 </Panel>
                 <Panel value="Agricultural areas">
-                    <Text value="Nature Element/Process 'Agricultural areas' in Text" name="Agricultural areas--ne_t_0_t"/>
+                    <Text value="Nature Element/Process 'Agricultural areas' in Text"
+                          name="Agricultural areas--ne_t_0_t"/>
                     <Choices name="Agricultural areas--ne_t_0" toName="title" showInline="true">
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
                     <View visibleWhen="choice-selected" whenTagName="Agricultural areas--ne_t_0" whenChoiceValue="No">
-                        <Text value="Nature Element/Process 'Agricultural areas' in media" name="Agricultural areas--ne_m_0_t"/>
+                        <Text value="Nature Element/Process 'Agricultural areas' in media"
+                              name="Agricultural areas--ne_m_0_t"/>
                         <Choices name="Agricultural areas--ne_m_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Agricultural areas--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Agricultural areas' in Text"
+                        <Text value="Media rejects Nature Element/Process  'Agricultural areas' in Text"
                               name="Agricultural areas--ne_m_rej_0_t"/>
                         <Choices name="Agricultural areas--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
@@ -239,7 +272,7 @@
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Forest and seminatural areas--ne_t_0"
                           whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Forest and seminatural areas' in Text"
+                        <Text value="Media rejects Nature Element/Process  'Forest and seminatural areas' in Text"
                               name="Forest and seminatural areas--ne_m_rej_0_t"/>
                         <Choices name="Forest and seminatural areas--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
@@ -261,7 +294,8 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Wetlands--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Wetlands' in Text" name="Wetlands--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process  'Wetlands' in Text"
+                              name="Wetlands--ne_m_rej_0_t"/>
                         <Choices name="Wetlands--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -282,7 +316,8 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Water bodies--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Water bodies' in Text" name="Water bodies--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process  'Water bodies' in Text"
+                              name="Water bodies--ne_m_rej_0_t"/>
                         <Choices name="Water bodies--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -303,7 +338,7 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Human--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Human' in Text" name="Human--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process  'Human' in Text" name="Human--ne_m_rej_0_t"/>
                         <Choices name="Human--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -324,7 +359,8 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Positive--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Positive' in Text" name="Positive--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process  'Positive' in Text"
+                              name="Positive--ne_m_rej_0_t"/>
                         <Choices name="Positive--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -337,6 +373,8 @@
                         <Choice value="Yes"/>
                         <Choice value="No"/>
                     </Choices>
+                    <Text name="negative_detail_t" value="Specify the negative Nature Element/Process"/>
+                    <TextArea name="negative_detail" toName="title"/>
                     <View visibleWhen="choice-selected" whenTagName="Negative--ne_t_0" whenChoiceValue="No">
                         <Text value="Nature Element/Process 'Negative' in media" name="Negative--ne_m_0_t"/>
                         <Choices name="Negative--ne_m_0" toName="title" showInline="true">
@@ -345,7 +383,8 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Negative--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Negative' in Text" name="Negative--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process  'Negative' in Text"
+                              name="Negative--ne_m_rej_0_t"/>
                         <Choices name="Negative--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
@@ -368,7 +407,7 @@
                         </Choices>
                     </View>
                     <View visibleWhen="choice-selected" whenTagName="Other--ne_t_0" whenChoiceValue="Yes">
-                        <Text value="Media rejects NE 'Other' in Text" name="Other--ne_m_rej_0_t"/>
+                        <Text value="Media rejects Nature Element/Process  'Other' in Text" name="Other--ne_m_rej_0_t"/>
                         <Choices name="Other--ne_m_rej_0" toName="title" showInline="true">
                             <Choice value="Yes"/>
                             <Choice value="No"/>
