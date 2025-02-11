@@ -2,9 +2,8 @@ from datetime import datetime
 
 import time
 
-from databases.db_models import DBPost, DBCollectionTask
-from databases.external import CollectionStatus
-from src.clients.clients_models import ClientConfig, ClientTaskConfig
+from databases.db_models import DBPost
+from databases.external import CollectionStatus, ClientTaskConfig, ClientConfig
 from src.clients.instances.twitter_client import TwitterClient
 from src.platform_manager import PlatformManager
 from tools.project_logging import get_logger
@@ -18,8 +17,8 @@ class TwitterManager(PlatformManager[TwitterClient]):
     - Tweet collection and processing
     """
 
-    def __init__(self, config,   **kwargs):
-        super().__init__("twitter",config, **kwargs)
+    def __init__(self, client_config: ClientConfig):
+        super().__init__(client_config)
         self.rate_limit_window = 900  # 15 minutes in seconds
         self.rate_limit_requests = 180  # Requests per window
         self.request_timestamps: list[float] = []
@@ -36,7 +35,7 @@ class TwitterManager(PlatformManager[TwitterClient]):
         if config and config.auth_config and not all(k in config.auth_config for k in
                                                      ['TWITTER_API_KEY', 'TWITTER_API_SECRET']):
             raise ValueError("Twitter client requires TWITTER_API_KEY and TWITTER_API_SECRET in auth_config")
-        return TwitterClient(config)
+        return TwitterClient(config, self)
 
     def _check_rate_limit(self):
         """Manage rate limiting for Twitter API"""

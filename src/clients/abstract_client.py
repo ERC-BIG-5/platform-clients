@@ -5,7 +5,7 @@ from typing import TypeVar, Optional, TYPE_CHECKING
 from pydantic import BaseModel
 
 from databases.db_models import CollectionResult, DBPost, DBUser
-from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
+from databases.external import ClientTaskConfig, CollectConfig, ClientConfig
 from tools.project_logging import get_logger
 
 if TYPE_CHECKING:
@@ -15,13 +15,25 @@ TClientConfig = TypeVar("TClientConfig", bound=BaseModel)
 PostEntry = TypeVar("PostEntry")
 UserEntry = TypeVar("UserEntry")
 
+class CollectionException(Exception):
+    orig_exception: Exception
+
+    def __init__(self, orig_exception: Exception) -> None:
+        self.orig_exception = orig_exception
+
+class QuotaExceeded(CollectionException):
+
+    def __init__(self, blocked_until: datetime, orig_exception: Exception) -> None:
+        super().__init__(orig_exception)
+        self.blocked_until = blocked_until
+
 
 class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
 
-    def __init__(self, config: ClientConfig):
+    def __init__(self, config: ClientConfig, manager: "PlatformManager"):
         self.config = config
         self._task_queue: list[ClientTaskConfig] = []
-        self.manager: Optional[PlatformManager] = None
+        self.manager: Optional[PlatformManager] = manager
         self.logger = get_logger(__name__)
 
     @abstractmethod
@@ -41,26 +53,29 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         """
         pass
 
-    async def execute_task(self, task: ClientTaskConfig) -> CollectionResult:
+    async def execute_task(self, task: ClientTaskConfig) -> CollectionResult | CollectionException:
         start_time = datetime.now()
-        collected_items = await self.collect(
-            task.collection_config
-        )
+        try:
+            collected_items = await self.collect(
+                task.collection_config
+            )
+            posts: list[DBPost] = []
+            users: set[DBUser] = set()
+            # Process results
+            for item in collected_items:
+                posts.append(self.create_post_entry(item, task))
+                users.add(self.create_user_entry(item))
 
-        posts: list[DBPost] = []
-        users: set[DBUser] = set()
-        # Process results
-        for item in collected_items:
-            posts.append(self.create_post_entry(item, task))
-            users.add(self.create_user_entry(item))
+            return CollectionResult(
+                posts=posts,
+                users=list(users),
+                task=task,
+                collected_items=len(collected_items),
+                duration=int((datetime.now() - start_time).total_seconds() * 1000)  # millis
+            )
+        except CollectionException as e:
+            return e
 
-        return CollectionResult(
-            posts = posts,
-            users = list(users),
-            task=task,
-            collected_items= len(collected_items),
-            duration=int((datetime.now() - start_time).total_seconds() * 1000) # millis
-        )
 
     @abstractmethod
     async def collect(self, collection_config: CollectConfig) -> list[PostEntry]:
@@ -97,4 +112,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
 
     @property
     def platform_name(self) -> str:
-        return self.manager.platform_name
+        return self.manager.platform_name()
+
+    def raw_post_data_conversion(self, data: dict) -> PostEntry:
+        raise NotImplementedError("This method should be implemented in the client")

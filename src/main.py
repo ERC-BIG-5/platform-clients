@@ -11,6 +11,7 @@ def main():
         # Progress all tasks
         asyncio.run(orchestrator.progress_tasks(None))
     except KeyboardInterrupt:
+        orchestrator.abort_tasks()
         print("bye bye")
     except Exception as e:
         get_logger(__name__).error(f"Error in main program flow: {str(e)}")

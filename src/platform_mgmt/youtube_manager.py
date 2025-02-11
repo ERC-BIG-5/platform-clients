@@ -1,4 +1,4 @@
-from src.clients.clients_models import ClientConfig
+from databases.external import ClientConfig
 from src.clients.instances.youtube_client import YoutubeClient, GoogleAPIKeySetting
 from src.platform_manager import PlatformManager
 
@@ -12,8 +12,8 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
     - YouTube-specific data transformations
     """
 
-    def __init__(self, platform_name: str, client_config: ClientConfig):
-        super().__init__(platform_name, client_config)
+    def __init__(self, client_config: ClientConfig):
+        super().__init__(client_config)
 
     def _create_client(self, config: ClientConfig) -> YoutubeClient:
         """Create and configure YouTube client"""
@@ -21,7 +21,7 @@ class YoutubeManager(PlatformManager[YoutubeClient]):
             raise ValueError("YouTube client requires GOOGLE_API_KEY in auth_config")
         else:
             config.auth_config = GoogleAPIKeySetting()
-        return YoutubeClient(config)
+        return YoutubeClient(config, self)
 
     def platform_name(self) -> str:
         return "youtube"

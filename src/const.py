@@ -30,6 +30,7 @@ class Big5Config(BaseSettings):
     # not sure anymore
     db_type: Literal["sqlite"] = Field(alias="DB_TYPE", default="sqlite")
     reset_db: bool = Field(alias="RESET_DB", default=False)
+    test_mode : bool = Field(alias="TEST_MODE", default=False)
 
 
 BIG5_CONFIG = Big5Config()

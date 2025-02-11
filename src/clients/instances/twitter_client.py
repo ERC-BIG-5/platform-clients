@@ -1,7 +1,7 @@
 import logging
 from contextlib import aclosing
 from datetime import datetime
-from typing import Optional, Protocol
+from typing import Optional, Protocol, TYPE_CHECKING
 
 import orjson
 from pydantic import Field
@@ -11,10 +11,13 @@ from twscrape import API
 from twscrape.api import API as TwitterAPI
 
 from databases.db_models import DBPost, DBUser
-from databases.external import PostType
+from databases.external import PostType, CollectConfig, ClientTaskConfig,ClientConfig
 from src.clients.abstract_client import AbstractClient, UserEntry
-from src.clients.clients_models import CollectConfig, ClientTaskConfig, BaseEnvSettings, ClientConfig
+from src.clients.clients_models import  BaseEnvSettings
 from src.const import ENV_FILE_PATH
+
+if TYPE_CHECKING:
+    from src.platform_mgmt.twitter_manager import TwitterManager
 
 
 class TwitterAuthSettings(BaseSettings):
@@ -61,8 +64,8 @@ class TwitterClient(AbstractClient):
     Updated Twitter client implementation using twscrape library
     """
 
-    def __init__(self, config: ClientConfig):
-        super().__init__(config)
+    def __init__(self, config: ClientConfig, manager: "TwitterManager"):
+        super().__init__(config, manager)
         self.api: Optional[TwitterAPI] = None
         self.settings: Optional[TwitterAuthSettings] = None
         self.logger = logging.getLogger(__file__)

@@ -6,7 +6,8 @@ from typing import Optional
 import itertools
 from pydantic_core._pydantic_core import ValidationError
 
-from src.clients.clients_models import TimeConfig, ClientTaskGroupConfig, ClientTaskConfig
+from databases.external import ClientTaskConfig
+from src.clients.clients_models import TimeConfig, ClientTaskGroupConfig
 from src.const import CLIENTS_TASKS_PATH
 from tools.files import read_data, get_abs_path
 
@@ -92,16 +93,22 @@ def load_tasks(task_path: Path) -> tuple[Optional[ClientTaskGroupConfig], list[C
         parsed_tasks = []
         for task_data in data:
             task = ClientTaskConfig.model_validate(task_data)
+            task.source_file = task_path
             parsed_tasks.append(task)
         return None, parsed_tasks # TODO TEMP
     try:
-        return None, [ClientTaskConfig.model_validate(data)]
+        task = ClientTaskConfig.model_validate(data)
+        task.source_file = task_path
+        return None, [task]
     except ValidationError as v_err:
         ct_cfg_err = v_err
 
     try:
         ctg = ClientTaskGroupConfig.model_validate(data)
-        return generate_configs(ctg)
+        task_group_conf, tasks = generate_configs(ctg)
+        for t in tasks:
+            t.source_file = task_path
+        return task_group_conf, tasks
     except ValidationError as v_err:
         print(ct_cfg_err)
         print("****")

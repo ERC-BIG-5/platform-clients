@@ -1,20 +1,18 @@
 import asyncio
-from typing import Dict, Type, Optional, TypeVar
+from asyncio import Task
+from pathlib import Path
+from typing import Type, Optional, TypeVar
 
 from sqlalchemy import exists
 
 from databases.db_mgmt import DatabaseManager
 from databases.db_models import DBPlatformDatabase
-from databases.external import DBConfig
+from databases.external import DBConfig, ClientConfig
 from databases.model_conversion import PlatformDatabaseModel
-from databases.platform_db_mgmt import PlatformDB
-from src.clients.clients_models import ClientConfig, RunConfig
+from src.clients.clients_models import RunConfig
 from src.clients.task_groups import load_tasks
 from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config
-# from src.db.db_mgmt import DatabaseManager
-# from src.db.db_models import DBPlatformDatabase
-# from src.db.model_conversion import PlatformDatabaseModel
-# from src.db.platform_db_mgmt import PlatformDB
+from src.misc.platform_quotas import load_quotas
 from src.platform_manager import PlatformManager
 from src.platform_mgmt.tiktok_manager import TikTokManager
 from src.platform_mgmt.twitter_manager import TwitterManager
@@ -42,6 +40,7 @@ class PlatformOrchestrator:
             self.logger = get_logger(__name__)
             self.initialize_platform_managers()
             self.__instance = self
+            self.current_tasks: list[Task] = []
 
     def _get_registered_platforms(self) -> list[PlatformDatabaseModel]:
         """Get all registered platforms from the main database"""
@@ -76,10 +75,16 @@ class PlatformOrchestrator:
 
             # Load from environment or config
             # Initialize platform manager
+            platform_quotas = load_quotas()
             try:
+
                 manager = manager_class(client_config)
                 self.platform_managers[platform] = manager
                 self.logger.debug(f"Initialized manager for platform: {platform}")
+                if manager.platform_name() in platform_quotas:
+                    manager.current_quota_halt = platform_quotas[manager.platform_name()]
+                    self.logger.info(
+                        f"{manager.platform_name()} has a halting quota until {manager.current_quota_halt}")
             except Exception as e:
                 self.logger.error(f"Failed to initialize manager for {platform}: {str(e)}")
                 raise e
@@ -95,26 +100,40 @@ class PlatformOrchestrator:
         """Progress tasks for specified platforms or all platforms"""
 
         # Create tasks for each platform
-        platform_tasks = []
+        # platform_tasks = []
         for platform, manager in self.platform_managers.items():
             if not self.run_config.clients[platform].progress:
                 self.logger.info(f"Progress for platform: '{platform}' deactivated")
                 continue
-            if platforms and platform not in platforms:
+            if (halt_until := manager.has_quota_halt()):
+                self.logger.info(
+                    f"Progress for platform: '{platform}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
                 continue
-            platform_tasks.append(manager.process_all_tasks())
-
+            if platforms and platform not in platforms:
+                # todo log, warning
+                continue
+            coro_task = asyncio.create_task(manager.process_all_tasks())
+            self.current_tasks.append(coro_task)
         # Execute all platform tasks concurrently
-        await asyncio.gather(*platform_tasks)
+        await asyncio.gather(*self.current_tasks)
 
-    def check_new_client_tasks(self) -> list[str]:
+    def check_new_client_tasks(self, task_dir: Optional[Path] = None) -> list[str]:
         """
         check for json file in the specific folder and add them into the sdb
         :return: returns a list of task names
         """
         added_tasks = []
         missing_platform_managers: set[str] = set()
-        for file in CLIENTS_TASKS_PATH.glob("*.json"):
+
+        files = []
+        if not task_dir:
+            task_dir = CLIENTS_TASKS_PATH
+        else:
+            files.append(task_dir)
+        if task_dir.is_dir():
+            files = task_dir.glob("*.json")
+
+        for file in files:
             # create collection_task models
             _, tasks = load_tasks(file)
             all_added = True
@@ -143,6 +162,12 @@ class PlatformOrchestrator:
         self.logger.info(f"new tasks: # {len(added_tasks)}")
         self.logger.debug(f"new tasks: # {[t for t in added_tasks]}")
         return added_tasks
+
+    async def abort_tasks(self):
+        for task_coro in self.current_tasks:
+            task_coro.cancel()
+            # self.platform_managers.items()
+            # task.platform
 
 
 T = TypeVar('T', bound=PlatformManager)

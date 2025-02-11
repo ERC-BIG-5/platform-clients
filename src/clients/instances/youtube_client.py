@@ -1,7 +1,7 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Literal, Sequence, Union, Protocol
+from typing import Optional, Literal, Sequence, Union, Protocol, TYPE_CHECKING
 
 import itertools
 import more_itertools
@@ -13,11 +13,14 @@ from pydantic import SecretStr, BaseModel, Field, field_validator, field_seriali
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from databases.db_models import DBPost, DBUser
-from databases.external import PostType
-from src.clients.abstract_client import AbstractClient, UserEntry
-from src.clients.clients_models import CollectConfig, ClientTaskConfig, ClientConfig
+from databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
+from src.clients.abstract_client import AbstractClient, UserEntry, QuotaExceeded
 from src.const import ENV_FILE_PATH, CLIENTS_DATA_PATH
+
 from tools.project_logging import get_logger
+
+if TYPE_CHECKING:
+    from src.platform_mgmt.youtube_manager import YoutubeManager
 
 
 class GoogleAPIKeySetting(BaseSettings):
@@ -256,8 +259,8 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
     DEFAULT_PART_OPTIONS = ["contentDetails", "status", "statistics", "topicDetails", "recordingDetails", "suggestions",
                             "localizations"]
 
-    def __init__(self, config: ClientConfig):
-        super().__init__(config)
+    def __init__(self, config: ClientConfig, manager: "YoutubeManager"):
+        super().__init__(config, manager)
         self.client: YoutubeResource = None
         self.logger = get_logger(__name__)
         # todo refactor this into a superclass or interface
@@ -314,7 +317,10 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
                     break
             except HttpError as e:
                 print(f"An HTTP error {e.resp.status} occurred:\n{e.content.decode('utf-8')}")
-                break
+                if e.status_code == 403:
+                    dt = datetime.now() +  timedelta(days=1)
+                    raise QuotaExceeded(blocked_until=dt, orig_exception=e)
+
 
         search_result_items = list(
             more_itertools.unique_everseen(search_result_items, key=lambda i: i["id"]["videoId"]))
