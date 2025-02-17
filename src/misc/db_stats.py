@@ -1,16 +1,16 @@
 import json
 import os
 import shutil
-from collections import namedtuple, Counter
-from dataclasses import dataclass
+from collections import Counter
 from pathlib import Path
-from typing import Optional, Generator
+from typing import Optional, Generator, Annotated
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from orjson import orjson
-from sqlalchemy import select, BinaryExpression
+from pydantic import field_validator
+from pydantic.functional_serializers import PlainSerializer
+from sqlalchemy import select, func
 
 from databases.db_mgmt import DatabaseManager
 from databases.db_models import DBPost, DBCollectionTask
@@ -24,7 +24,7 @@ from dataclasses import field
 from datetime import date
 from datetime import datetime
 import matplotlib.dates as mdates
-from dataclasses import asdict
+from pydantic import BaseModel
 
 RAISE_DB_ERROR = True
 
@@ -38,16 +38,27 @@ def delete_stats_copy():
         os.remove(stats_copy_path)
 
 
+SerializableDate = Annotated[
+    date, PlainSerializer(lambda d: f'{d:%Y-%m-%d}', return_type=str)
+]
+
+SerializableCounter = Annotated[
+    Counter[str], PlainSerializer(lambda c: dict(c), return_type=dict)
+]
+
+SerializablePath = Annotated[
+    Path, PlainSerializer(lambda p: p.relative_to(BASE_DATA_PATH).as_posix(), return_type=Path)
+]
 
 
-@dataclass
-class PlatformStats:
+class PlatformStats(BaseModel):
     name: str
     post_count: int = 0
-    min_date: date = field(default_factory=datetime.max.date)
-    max_date: date = field(default_factory=datetime.min.date)
-    year_month_count: Counter[str, int] | dict[str,int] = field(default_factory=Counter)
-    last_collected: date = field(default_factory=datetime.min.date)
+    min_date: SerializableDate = field(default_factory=datetime.max.date)
+    max_date: SerializableDate = field(default_factory=datetime.min.date)
+    year_month_count: Counter[str] = field(default_factory=Counter)
+    last_collected: SerializableDate = field(default_factory=datetime.min.date)
+    date_count: dict[date, int] = field(default_factory=dict)
 
     def add_post(self, post: DBPost):
         self.post_count += 1
@@ -57,46 +68,51 @@ class PlatformStats:
         self.year_month_count[f"{created:%Y_%m}"] += 1
         self.last_collected = max(self.last_collected, post.date_collected.date())
 
-    def make_serializable(self) -> dict:
-        self.year_month_count = dict(self.year_month_count)
+    def add_day_counts(self, date: date, count: int):
+        self.date_count[date] = count
 
-@dataclass
-class DBStats:
-    db_path: Path | str
+
+class DBStats(BaseModel):
+    db_path: SerializablePath
     platforms: dict[str, PlatformStats] = field(default_factory=dict)
     error: Optional[str] = None
 
+    @field_validator("db_path")
+    def validate_db_path(cls, v):
+        v = BASE_DATA_PATH / v
+        return v
+
     def add_post(self, post: DBPost | PostModel):
-        self.platforms.setdefault(post.platform, PlatformStats(post.platform)).add_post(post)
+        self.platforms.setdefault(post.platform, PlatformStats(name=post.platform)).add_post(post)
 
-    def serializable_dict(self) -> dict:
-        self.db_path = self.simple_path
-        for pd in self.platforms.values():
-            pd.make_serializable()
-        return json.loads(orjson.dumps(asdict(self)))
-
-    @property
-    def simple_path(self) -> str:
-        return self.db_path.relative_to(BASE_DATA_PATH).as_posix()
+    def add_day_counts(self, post: DBPost, date: date, count: int):
+        self.platforms.setdefault(post.platform, PlatformStats(name=post.platform)).add_day_counts(date, count)
 
 
-# todo use misc.helper
-def get_posts(db: DatabaseManager,
-              conditions: Optional[BinaryExpression | list[BinaryExpression]] = None
-              ) -> Generator[PostModel, None, None]:
+def get_posts(db: DatabaseManager) -> Generator[PostModel, None, None]:
     with db.get_session() as session:
         query = select(DBPost)
-        if conditions is not None:
-            if isinstance(conditions, list):
-                for condition in conditions:
-                    query = query.where(condition)
-            else:
-                query = query.where(conditions)
 
         # Execute the query and return the results
         result = session.execute(query).scalars()
         for post in result:
             yield post.model()
+
+
+def get_posts_by_day(db: DatabaseManager) -> Generator[tuple[DBPost, date, int], None, None]:
+    with db.get_session() as session:
+        query = select(
+            DBPost,
+            func.date(DBPost.date_created).label('day'),
+            func.count().label('count')
+        ).group_by(
+            func.date(DBPost.date_created)
+        )
+
+        # Execute the query and return the results
+        result = session.execute(query).all()
+        for post, date, count in result:
+            yield post, date, count
 
 
 # def get_year_counts(year: int) -> pd.Series:
@@ -180,7 +196,7 @@ class DBMerger:
         with self.db.get_session() as session:
             session.add(DBCollectionTask(task_name="fake_collection", platform=self.platforms, collection_config={}))
 
-    def add_post(self, post: PostModel, orig_db_name: str):
+    def add_post(self, post: PostModel, orig_db_name: Path):
         self.batch.append(post)
 
         if len(self.batch) >= self.BATCH_SIZE:
@@ -188,7 +204,7 @@ class DBMerger:
             db_posts: list[DBPost] = []
             for post in posts:
                 md = post.metadata_content
-                md.orig_db_conf = (orig_db_name, post.collection_task_id)
+                md.orig_db_conf = (orig_db_name.as_posix(), post.collection_task_id)
                 post.collection_task_id = 1
                 post_d = post.model_dump(exclude={"id"})
                 db_posts.append(DBPost(**post_d))
@@ -197,17 +213,27 @@ class DBMerger:
             self.batch.clear()
 
 
-def process_db(db_path: Path, merger_dbs: Optional[dict[str, DBMerger]] = None) -> DBStats:
+def process_db(db_path: Path,
+               merger_dbs: Optional[dict[str, DBMerger]] = None,
+               daily_details: bool = False) -> DBStats:
     make_stats_copy(db_path)
     stats = DBStats(db_path=db_path)
 
+    db_func = get_posts
+    if daily_details:
+        db_func = get_posts_by_day
+
     try:
         db = DatabaseManager(DBConfig(db_connection=SQliteConnection(db_path=stats_copy_path)))
-        for post in get_posts(db):
-            stats.add_post(post)
-            if merger_dbs:
-                if post.platform in merger_dbs:
-                    merger_dbs[post.platform].add_post(post, stats.simple_path)
+        for res in db_func(db):
+
+            if daily_details:
+                stats.add_day_counts(*res)
+            else:
+                stats.add_post(res)
+                if merger_dbs:
+                    if res.platform in merger_dbs:
+                        merger_dbs[res.platform].add_post(res, stats.db_path)
     except Exception as e:
         if RAISE_DB_ERROR:
             raise e
@@ -215,13 +241,13 @@ def process_db(db_path: Path, merger_dbs: Optional[dict[str, DBMerger]] = None) 
         stats.error = str(e)
     finally:
         delete_stats_copy()
-
+    # print(stats)
     return stats
 
 
 def create_merge_db():
-    dest_file = BASE_DATA_PATH / f"stats/{datetime.now():%Y%m%-d%H}.json"
-    all_stats_data: list[dict] = []
+    dest_file = BASE_DATA_PATH / f"stats/all.json"
+    all_stats_data: list[DBStats] = []
 
     skip = ["db.sqlite", "twitter_merged.sqlite", "youtube_merged.sqlite"]
 
@@ -230,32 +256,53 @@ def create_merge_db():
         os.remove(BASE_DATA_PATH / f"{platform}_merged.sqlite")
         merger_dbs[platform] = DBMerger(BASE_DATA_PATH / f"{platform}_merged.sqlite", platform)
 
-        all_dbs = BASE_DATA_PATH.glob("*.sqlite")
+    all_dbs = BASE_DATA_PATH.glob("*.sqlite")
 
-        for db_path in all_dbs:
-            print(db_path)
-            if db_path.name in skip:
-                continue
-            stats = process_db(db_path, merger_dbs)
-            all_stats_data.append(stats.serializable_dict())
+    for db_path in all_dbs:
+        print(db_path)
+        if db_path.name in skip:
+            continue
+        stats = process_db(db_path, merger_dbs)
+        all_stats_data.append(stats)
 
-        json.dump(all_stats_data, dest_file.open("w"), indent=4)
+    json.dump([db.model_dump() for db in all_stats_data], dest_file.open("w"), indent=4)
 
 
 def inspect_mergers():
-    dest_file = BASE_DATA_PATH / f"stats/{datetime.now():%Y%m%-d%H_M}.json"
-    all_stats_data: list[dict] = []
+    # dest_file = BASE_DATA_PATH / f"stats/{datetime.now():%Y%m%-d%H_M}.json"
+    dest_file = BASE_DATA_PATH / f"stats/all_stats.json"
+    all_stats_data: list[DBStats] = []
 
     all_dbs = [BASE_DATA_PATH / f"{platform}_merged.sqlite" for platform in ["twitter", "youtube"]]
 
     for db_path in all_dbs:
         print(db_path)
         stats = process_db(db_path)
-        all_stats_data.append(stats.serializable_dict())
+        all_stats_data.append(stats)
+        break
 
     json.dump(all_stats_data, dest_file.open("w"), indent=4)
 
 
+def update_db(db_path: Path, details: bool = False):
+    dest_file = BASE_DATA_PATH / f"stats/all.json"
+    all_stats_data: list[DBStats] = [DBStats.model_validate(d) for d in json.load(open(dest_file))]
+
+    db_found = False
+    for idx, stat in enumerate(all_stats_data):
+        if stat.db_path == db_path:
+            stats = process_db(db_path, None, details)
+            all_stats_data[idx] = stats
+            db_found = True
+            break
+    if not db_found:
+        print(f"adding db: {db_path}")
+        all_stats_data.append(stats)
+
+    json.dump([db.model_dump() for db in all_stats_data], dest_file.open("w"), indent=4)
+
+
 if __name__ == "__main__":
-    # create_merge_db()
-    inspect_mergers()
+    update_db(BASE_DATA_PATH / "tiktok.sqlite", True)
+    #create_merge_db()
+# inspect_mergers()

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TypeVar, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel
@@ -15,17 +15,30 @@ TClientConfig = TypeVar("TClientConfig", bound=BaseModel)
 PostEntry = TypeVar("PostEntry")
 UserEntry = TypeVar("UserEntry")
 
+
 class CollectionException(Exception):
     orig_exception: Exception
 
     def __init__(self, orig_exception: Exception) -> None:
         self.orig_exception = orig_exception
 
+
 class QuotaExceeded(CollectionException):
 
     def __init__(self, blocked_until: datetime, orig_exception: Exception) -> None:
         super().__init__(orig_exception)
         self.blocked_until = blocked_until
+
+    @classmethod
+    def next_day(self, orig_exception: Exception) -> "QuotaExceeded":
+        tomorrow = datetime.now() + timedelta(days=1)
+        block_time = datetime(tomorrow.year, tomorrow.month, tomorrow.day)
+        return QuotaExceeded(blocked_until=block_time, orig_exception=orig_exception)
+
+    @classmethod
+    def twenty_four_hours(cls, orig_exception: Exception) -> "QuotaExceeded":
+        tomorrow = datetime.now() + timedelta(hours=24)
+        return QuotaExceeded(blocked_until=tomorrow, orig_exception=orig_exception)
 
 
 class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
@@ -68,6 +81,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
 
             return CollectionResult(
                 posts=posts,
+                added_posts=[],
                 users=list(users),
                 task=task,
                 collected_items=len(collected_items),
@@ -75,7 +89,6 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
             )
         except CollectionException as e:
             return e
-
 
     @abstractmethod
     async def collect(self, collection_config: CollectConfig) -> list[PostEntry]:

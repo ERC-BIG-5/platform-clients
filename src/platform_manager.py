@@ -4,11 +4,14 @@ from datetime import datetime
 from random import randint
 from typing import Generic, TypeVar, Optional
 
+import httpx
+
 from databases.db_models import CollectionResult
 from databases.external import CollectionStatus, ClientTaskConfig, ClientConfig
 from databases.platform_db_mgmt import PlatformDB
 from src.clients.abstract_client import AbstractClient, PostEntry, CollectionException, \
     QuotaExceeded
+from src.clients.clients_models import ClientTaskGroupConfig
 from src.const import BIG5_CONFIG
 from src.misc.platform_quotas import store_quota, remove_quota
 from tools.project_logging import get_logger
@@ -50,7 +53,7 @@ class PlatformManager(Generic[T_Client], ABC):
             self.client.setup()
             self._client_setup = True
 
-    def add_task(self, task: ClientTaskConfig) -> bool:
+    def add_task(self, task: ClientTaskConfig, task_group: ClientTaskGroupConfig) -> bool:
         """Add a new collection task"""
         return self.platform_db.add_db_collection_task(task)
 
@@ -69,6 +72,13 @@ class PlatformManager(Generic[T_Client], ABC):
                 self.current_quota_halt = None
                 remove_quota(self.platform_name())
 
+    async def send_result(self, result: CollectionResult):
+        try:
+            host, port, path = BIG5_CONFIG.send_post_host, BIG5_CONFIG.send_post_port, BIG5_CONFIG.send_post_path
+            httpx.post(f"{host}:{port}/{path}", json=[p.model_dump() for p in result.added_posts])
+        except httpx.HTTPError as e:
+            self.logger.warning(f"send_results failed: {e}")
+
     async def process_all_tasks(self):
         """Process all pending tasks"""
         tasks = self.get_pending_tasks()
@@ -79,7 +89,11 @@ class PlatformManager(Generic[T_Client], ABC):
                 print(f"quota halt. not continuing tasks {halt_until:%Y.%m.%d - %H:%M}")
                 break
             self.logger.debug(f"Processing task- platform:{task.platform}, id:{task.id}, {idx + 1}/{len(tasks)}")
-            await self.process_task(task)
+            collection_result = await self.process_task(task)
+
+            if BIG5_CONFIG.send_posts and isinstance(collection_result, CollectionResult):
+                await self.send_result(collection_result)
+
             # if not tasks[-1] == task:
             sleep_time = self.client.config.request_delay
             sleep_time += randint(0, self.client.config.delay_randomize)

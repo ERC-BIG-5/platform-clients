@@ -135,7 +135,7 @@ class PlatformOrchestrator:
 
         for file in files:
             # create collection_task models
-            _, tasks = load_tasks(file)
+            task_group, tasks = load_tasks(file)
             all_added = True
             for task in tasks:
                 if task.platform in missing_platform_managers:
@@ -147,7 +147,7 @@ class PlatformOrchestrator:
                     continue
 
                 manager = self.platform_managers[task.platform]
-                if manager.add_task(task):
+                if manager.add_task(task, task_group):
                     added_tasks.append(task.task_name)
                     # Register platform database in main DB
                     self.add_platform_db(task.platform, manager.platform_db.db_config.connection_str)

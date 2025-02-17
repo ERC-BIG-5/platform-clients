@@ -8,7 +8,7 @@ from tiktok_research_api import TikTokResearchAPI, Criteria, QueryVideoRequest, 
 
 from databases.db_models import DBUser, DBPost
 from databases.external import ClientConfig, ClientTaskConfig, CollectConfig
-from src.clients.abstract_client import AbstractClient, CollectionException
+from src.clients.abstract_client import AbstractClient, CollectionException, QuotaExceeded
 from src.const import ENV_FILE_PATH
 from tools.project_logging import get_logger
 
@@ -128,7 +128,8 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
         self.settings = TikTokPISetting()
         self.client = TikTokResearchAPI(self.settings.TIKTOK_CLIENT_KEY,
                                         self.settings.TIKTOK_CLIENT_SECRET.get_secret_value(),
-                                        self.settings.RATE_LIMIT)
+                                        self.settings.RATE_LIMIT,
+                                        retry_sleep_time=7)
 
     def transform_config(self, abstract_config: CollectConfig) -> QueryVideoRequest:
         if abstract_config.from_time:
@@ -161,13 +162,15 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
         all_videos = []
         while True:
             try:
-                videos, search_id, cursor, has_more, start_date, end_date = self.client.query_videos(config,
+                videos, search_id, cursor, has_more, start_date, end_date, error = self.client.query_videos(config,
                                                                                                      fetch_all_pages=True)
             except JSONDecodeError as exc:
                 print(exc)
                 # todo, stop? mark abort
                 return []
             except Exception as exc:
+                if str(exc) == "Rate limit reached":
+                    raise QuotaExceeded.next_day(exc)
                 print(exc)
                 raise CollectionException(orig_exception=exc)
             all_videos.extend([

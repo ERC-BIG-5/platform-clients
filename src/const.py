@@ -27,6 +27,10 @@ class Big5Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
     run_config_file_name: str = Field(alias="RUN_CONFIG")
     moved_processed_tasks: bool = Field(alias="MOVE_PROCESSED_TASKS", default=True)
+    send_posts: bool = Field(alias="SEND_TASK_POSTS", default=True)
+    send_post_host: str = Field(alias="SEND_POST_HOST", default="http://localhost")
+    send_post_port: int = Field(alias="SEND_POST_PORT", default=8800)
+    send_post_path: str = Field(alias="SEND_POST_PATH", default="")
     # not sure anymore
     db_type: Literal["sqlite"] = Field(alias="DB_TYPE", default="sqlite")
     reset_db: bool = Field(alias="RESET_DB", default=False)
