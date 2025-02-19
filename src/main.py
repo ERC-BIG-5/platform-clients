@@ -8,6 +8,7 @@ def main():
         orchestrator = PlatformOrchestrator()
         # Check for new tasks first
         orchestrator.check_new_client_tasks()
+        orchestrator.fix_tasks()
         # Progress all tasks
         asyncio.run(orchestrator.progress_tasks(None))
     except KeyboardInterrupt:

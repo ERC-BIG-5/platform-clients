@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class TikTokPISetting(BaseSettings):
     TIKTOK_CLIENT_KEY: str
     TIKTOK_CLIENT_SECRET: SecretStr
-    RATE_LIMIT: int = 5
+    RATE_LIMIT: int = 3
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
 
 
@@ -126,10 +126,12 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
 
     def setup(self):
         self.settings = TikTokPISetting()
+        #print(self.settings.RATE_LIMIT)
         self.client = TikTokResearchAPI(self.settings.TIKTOK_CLIENT_KEY,
                                         self.settings.TIKTOK_CLIENT_SECRET.get_secret_value(),
                                         self.settings.RATE_LIMIT,
                                         retry_sleep_time=7)
+        #print(self.client.retry_sleep_time)
 
     def transform_config(self, abstract_config: CollectConfig) -> QueryVideoRequest:
         if abstract_config.from_time:

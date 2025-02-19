@@ -117,6 +117,7 @@ class PlatformManager(Generic[T_Client], ABC):
                 collection = CollectionResult(
                     posts=db_posts,
                     users=[],
+                    added_posts=[],
                     task=task,
                     collected_items=len(db_posts),
                     duration=0  # millis
@@ -140,6 +141,10 @@ class PlatformManager(Generic[T_Client], ABC):
         except Exception as e:
             self.platform_db.update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
+
+    def pause_running_tasks(self):
+        self.platform_db.pause_running_tasks()
+
 
     @abstractmethod
     def platform_name(self) -> str:

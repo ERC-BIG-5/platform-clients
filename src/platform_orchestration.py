@@ -163,6 +163,13 @@ class PlatformOrchestrator:
         self.logger.debug(f"new tasks: # {[t for t in added_tasks]}")
         return added_tasks
 
+    def fix_tasks(self):
+        """
+        set the tasks of status "RUNNING" to "PAUSED"
+        """
+        for platform, platform_mgmt in self.platform_managers.items():
+            platform_mgmt.pause_running_tasks()
+
     async def abort_tasks(self):
         for task_coro in self.current_tasks:
             task_coro.cancel()
