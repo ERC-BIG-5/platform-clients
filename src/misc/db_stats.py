@@ -1,3 +1,6 @@
+"""
+use databases. merger instead for merging
+"""
 import json
 import os
 import shutil
@@ -19,7 +22,6 @@ from databases.external import DBConfig, SQliteConnection
 from databases.model_conversion import PostModel
 from src.const import BASE_DATA_PATH
 
-stats_copy_path = BASE_DATA_PATH / "stats_copy.sqlite"
 from dataclasses import field
 from datetime import date
 from datetime import datetime
@@ -27,6 +29,41 @@ import matplotlib.dates as mdates
 from pydantic import BaseModel
 
 RAISE_DB_ERROR = True
+stats_copy_path = BASE_DATA_PATH / "stats_copy.sqlite"
+
+
+class DBMerger:
+    BATCH_SIZE = 100
+
+    def __init__(self, db_path: Path, platform: str, add_fake_collection_task: bool = True):
+        self.db_path = db_path
+        self.db = DatabaseManager(DBConfig(db_connection=SQliteConnection(db_path=db_path)))
+        self.batch: list[PostModel] = []
+        self.platforms = platform
+        if add_fake_collection_task:
+            self.add_fake_collection_task()
+        else:
+            raise NotImplementedError("add_fake_collection_task is not implemented.")
+
+    def add_fake_collection_task(self):
+        with self.db.get_session() as session:
+            session.add(DBCollectionTask(task_name="fake_collection", platform=self.platforms, collection_config={}))
+
+    def add_post(self, post: PostModel, orig_db_name: Path):
+        self.batch.append(post)
+
+        if len(self.batch) >= self.BATCH_SIZE:
+            posts: list[PostModel] = filter_posts_with_existing_post_ids(self.batch, self.db)
+            db_posts: list[DBPost] = []
+            for post in posts:
+                md = post.metadata_content
+                md.orig_db_conf = (orig_db_name.as_posix(), post.collection_task_id)
+                post.collection_task_id = 1
+                post_d = post.model_dump(exclude={"id"})
+                db_posts.append(DBPost(**post_d))
+
+            self.db.submit_posts(db_posts)
+            self.batch.clear()
 
 
 def make_stats_copy(db_path: Path):
@@ -179,40 +216,6 @@ def plot_daily_items(daily_counts: pd.Series, bars: bool = False):
     return plt
 
 
-class DBMerger:
-    BATCH_SIZE = 100
-
-    def __init__(self, db_path: Path, platform: str, add_fake_collection_task: bool = True):
-        self.db_path = db_path
-        self.db = DatabaseManager(DBConfig(db_connection=SQliteConnection(db_path=db_path)))
-        self.batch: list[PostModel] = []
-        self.platforms = platform
-        if add_fake_collection_task:
-            self.add_fake_collection_task()
-        else:
-            raise NotImplementedError("add_fake_collection_task is not implemented.")
-
-    def add_fake_collection_task(self):
-        with self.db.get_session() as session:
-            session.add(DBCollectionTask(task_name="fake_collection", platform=self.platforms, collection_config={}))
-
-    def add_post(self, post: PostModel, orig_db_name: Path):
-        self.batch.append(post)
-
-        if len(self.batch) >= self.BATCH_SIZE:
-            posts: list[PostModel] = filter_posts_with_existing_post_ids(self.batch, self.db)
-            db_posts: list[DBPost] = []
-            for post in posts:
-                md = post.metadata_content
-                md.orig_db_conf = (orig_db_name.as_posix(), post.collection_task_id)
-                post.collection_task_id = 1
-                post_d = post.model_dump(exclude={"id"})
-                db_posts.append(DBPost(**post_d))
-
-            self.db.submit_posts(db_posts)
-            self.batch.clear()
-
-
 def process_db(db_path: Path,
                merger_dbs: Optional[dict[str, DBMerger]] = None,
                daily_details: bool = False) -> DBStats:
@@ -304,5 +307,5 @@ def update_db(db_path: Path, details: bool = False):
 
 if __name__ == "__main__":
     update_db(BASE_DATA_PATH / "tiktok.sqlite", True)
-    #create_merge_db()
+    # create_merge_db()
 # inspect_mergers()

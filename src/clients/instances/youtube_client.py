@@ -70,7 +70,7 @@ class YoutubeSearchParameters(BaseModel):
     maxResults: Optional[int] = Field(
         ge=0,
         le=50,
-        default=2,
+        default=50,
         description="Maximum number of items to return"
     )
 
@@ -283,6 +283,10 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
     def transform_config(self, abstract_config: CollectConfig) -> YoutubeSearchParameters:
         return YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
 
+    @classmethod
+    def static_transform_config(clz, abstract_config: CollectConfig) -> YoutubeSearchParameters:
+        return YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
+
     async def collect(self, generic_config: CollectConfig) -> list[dict]:
 
         # ,contentDetails,statistics,status,topicDetails,recordingDetails,localizations",
@@ -318,9 +322,8 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
             except HttpError as e:
                 print(f"An HTTP error {e.resp.status} occurred:\n{e.content.decode('utf-8')}")
                 if e.status_code == 403:
-                    dt = datetime.now() +  timedelta(days=1)
+                    dt = datetime.now() + timedelta(days=1)
                     raise QuotaExceeded(blocked_until=dt, orig_exception=e)
-
 
         search_result_items = list(
             more_itertools.unique_everseen(search_result_items, key=lambda i: i["id"]["videoId"]))
