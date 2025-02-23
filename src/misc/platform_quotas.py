@@ -8,8 +8,10 @@ from pathlib import Path
 
 from src.const import BASE_DATA_PATH
 
-def fp()-> Path:
+
+def fp() -> Path:
     return BASE_DATA_PATH / "platform_quotas.json"
+
 
 def load_quotas() -> dict[str, datetime]:
     if fp().exists():
@@ -22,8 +24,9 @@ def load_quotas() -> dict[str, datetime]:
 
 def store_quota(platform: str, time: datetime) -> None:
     current = load_quotas()
-    current[platform] = time.timestamp()
-    fp().write_text(json.dumps(current))
+    current[platform] = time
+    fp().write_text(json.dumps({p: t.timestamp() for p, t in current.items()}))
+
 
 def remove_quota(platform: str) -> None:
     current = load_quotas()
