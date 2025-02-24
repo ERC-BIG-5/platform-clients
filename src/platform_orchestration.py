@@ -105,12 +105,12 @@ class PlatformOrchestrator:
             if not self.run_config.clients[platform].progress:
                 self.logger.info(f"Progress for platform: '{platform}' deactivated")
                 continue
-            if (halt_until := manager.has_quota_halt()):
+            if halt_until := manager.has_quota_halt():
                 self.logger.info(
                     f"Progress for platform: '{platform}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
                 continue
             if platforms and platform not in platforms:
-                # todo log, warning
+                self.logger.warning(f"undefined platform: '{platform}'")
                 continue
             coro_task = asyncio.create_task(manager.process_all_tasks())
             self.current_tasks.append(coro_task)

@@ -1,20 +1,37 @@
 import asyncio
-import sys
 
+from databases.db_stats import count_posts
 from src.platform_orchestration import PlatformOrchestrator
 from tools.project_logging import get_logger
+from rich import print
+from rich.table import Table
+
+from rich.console import Console
+import typer
+
+app = typer.Typer()
+console = Console()
 
 
+@app.command()
 def status(task_status: bool = True):
     orchestrator = PlatformOrchestrator()
+    task_status_types = ["done","init","paused","aborted"]
+    table = Table("platform","total", *task_status_types)
+
     for platform, manager in orchestrator.platform_managers.items():
         if task_status:
             tasks = manager.platform_db.count_states()
-            print(platform)
-            print(tasks)
+            total_posts = count_posts(db_manager=manager.platform_db.db_mgmt)
+            status_numbers = [str(tasks.get(t,0)) for t in task_status_types]
+            row = [platform, str(total_posts)] + status_numbers
+            table.add_row(*row)
+
+    console.print(table)
 
 
-def main():
+@app.command()
+def collect():
     try:
         orchestrator = PlatformOrchestrator()
         # Check for new tasks first
@@ -23,7 +40,7 @@ def main():
         # Progress all tasks
         asyncio.run(orchestrator.progress_tasks(None))
     except KeyboardInterrupt:
-        orchestrator.abort_tasks()
+        asyncio.run(orchestrator.abort_tasks())
         print("bye bye")
     except Exception as e:
         get_logger(__name__).error(f"Error in main program flow: {str(e)}")
@@ -31,11 +48,12 @@ def main():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        print(sys.argv[1])
-        if sys.argv[1] == "status":
-            status()
-        else:
-            print("Unknown command")
-    else:
-        main()
+    # if len(sys.argv) > 1:
+    #     print(sys.argv[1])
+    #     if sys.argv[1] == "status":
+    #         status()
+    #     else:
+    #         print("Unknown command")
+    # else:
+    #     main()
+    app()
