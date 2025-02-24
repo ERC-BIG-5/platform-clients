@@ -323,7 +323,7 @@ class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClien
                 print(f"An HTTP error {e.resp.status} occurred:\n{e.content.decode('utf-8')}")
                 if e.status_code == 403:
                     dt = datetime.now() + timedelta(days=1)
-                    raise QuotaExceeded(blocked_until=dt, orig_exception=e)
+                    raise QuotaExceeded.next_day(e)
 
         search_result_items = list(
             more_itertools.unique_everseen(search_result_items, key=lambda i: i["id"]["videoId"]))
