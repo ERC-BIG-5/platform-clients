@@ -9,6 +9,7 @@ from rich import print
 from rich.console import Console
 from rich.table import Table
 
+from databases import db_utils
 from databases.db_merge import DBMerger
 from databases.db_mgmt import DatabaseManager
 from databases.db_stats import count_posts, generate_db_stats, BASE_DATA_PATH
@@ -29,7 +30,7 @@ def status(task_status: bool = True,
     orchestrator = PlatformOrchestrator()
 
     task_status_types = ["done", "init", "paused", "aborted"] if task_status else []
-    table = Table("platform", "total", *task_status_types)
+    table = Table("platform", "total", "size", *task_status_types)
 
     def calc_row(db: DatabaseManager, platform_: str) -> list[str | int]:
         if task_status:
@@ -37,8 +38,9 @@ def status(task_status: bool = True,
             status_numbers = [str(tasks.get(t, 0)) for t in task_status_types]
         else:
             status_numbers = []
-        total_posts = count_posts(db_manager=db)
-        return [platform_, str(total_posts)] + status_numbers
+        total_posts = str(count_posts(db_manager=db))
+        size = str(f"{int(db_utils.file_size(db) / (1024*1024))} Mb")
+        return [platform_, total_posts, size] + status_numbers
 
     # use a database
     if databases:
