@@ -3,30 +3,41 @@
 the repo, contains all the clients for the different platforms and manages the download of social media metadata and
 store it in a database
 
+## Running commands
+
+Running commands with Typer:
+
+first source run.sh to have the projects it depends on for the PYTHONPATH
+
+commands:
+
+- status: Gives a status on the defined databases (in the RUN_CONFIG)
+- collect: Collect with the current RUN_CONFIG
+- db-stats: Get the stats post-count per month/day
+
 ### Diagram
 
 PlatformOrchestrator
 └── initialize_platform_managers()
-    └── Creates platform-specific managers (TwitterManager, YoutubeManager)
-        └── Each manager creates platform-specific client
-            └── Client handles platform API interactions
+└── Creates platform-specific managers (TwitterManager, YoutubeManager)
+└── Each manager creates platform-specific client
+└── Client handles platform API interactions
 
 DatabaseManager
 ├── Main database (tracks platforms)
 └── Platform-specific databases
-    └── Stores tasks and collected data
+└── Stores tasks and collected data
 
 ```mermaid
 graph TB
-    
-PlatformOrchestrator --> A
+    PlatformOrchestrator --> A
 
 ```
+
 ## Adding (collection)tasks
 
 When the program starts (or `check_new_client_tasks`) is called tasks
 are loaded from `CLIENTS_TASKS_PATH` (data/clients_tasks)
-
 
 ```
 class ClientTaskConfig(BaseModel):
@@ -52,7 +63,6 @@ class ClientTaskConfig(BaseModel):
 
 ### transform_config
 
-
 ### add_tasks
 
 ### continue_tasks
@@ -69,8 +79,6 @@ This function transforms the service specific post entry into a DBPost object
 
 ### create_user_entry
 
-    
-
 ## Youtube
 
 ### How to obtain a API key
@@ -78,5 +86,20 @@ This function transforms the service specific post entry into a DBPost object
 ## TikTok
 
 ###
+
 https://developers.tiktok.com/
+
+The Client is a fork of the official
+client [TikTok Research API Wrapper](https://github.com/tiktok/tiktok-research-api-wrapper).
+Repo of the form: https://github.com/transfluxus/tiktok-research-api-wrapper
+
+Because different errors should be handled differently and the sleep-timer when waiting for the SearchID reusable needs
+to be adjusted.
+It should be more or less 7 seconds, it seems.
+
+Use
+`pip install -U  -I git+https://github.com/transfluxus/tiktok-research-api-wrapper.git#subdirectory=tiktok-research-api-python`
+
+maybe
+`pip install -U -I  --no-deps git+https://github.com/transfluxus/tiktok-research-api-wrapper.git#subdirectory=tiktok-research-api-python`
 
