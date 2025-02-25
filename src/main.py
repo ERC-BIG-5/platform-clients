@@ -10,8 +10,9 @@ from rich.console import Console
 from rich.table import Table
 
 from databases.db_merge import DBMerger
+from databases.db_mgmt import DatabaseManager
 from databases.db_stats import count_posts, generate_db_stats, BASE_DATA_PATH
-from databases.db_utils import reset_task_states
+from databases.db_utils import reset_task_states, check_platforms
 from databases.external import CollectionStatus
 from src.platform_orchestration import PlatformOrchestrator
 from tools.project_logging import get_logger
@@ -23,17 +24,38 @@ console = Console()
 
 @app.command(short_help="Get the number of posts, and tasks statuses of all specified databases (RUN_CONFIG)")
 def status(task_status: bool = True,
-           alternative_dbs: Optional[list[Path]] = None):
+           databases: Optional[
+               Annotated[list[Path], typer.Option(help="Use this database instead of the RUN_CONFIG dbs")]] = None):
     orchestrator = PlatformOrchestrator()
-    task_status_types = ["done", "init", "paused", "aborted"]
+
+    task_status_types = ["done", "init", "paused", "aborted"] if task_status else []
     table = Table("platform", "total", *task_status_types)
 
-    for platform, manager in orchestrator.platform_managers.items():
+    def calc_row(db: DatabaseManager, platform_: str) -> list[str | int]:
         if task_status:
-            tasks = manager.platform_db.count_states()
-            total_posts = count_posts(db_manager=manager.platform_db.db_mgmt)
+            tasks = db.count_states()
             status_numbers = [str(tasks.get(t, 0)) for t in task_status_types]
-            row = [platform, str(total_posts)] + status_numbers
+        else:
+            status_numbers = []
+        total_posts = count_posts(db_manager=db)
+        return [platform_, str(total_posts)] + status_numbers
+
+    # use a database
+    if databases:
+        for db_path in databases:
+            db = DatabaseManager.sqlite_db_from_path(db_path, create=False)
+            platforms = list(check_platforms(db))
+            if len(platforms) > 1:
+                raise ValueError("Database has more than one platform")
+            platform = platforms[0]
+
+            row = calc_row(db, platform)
+            table.add_row(*row)
+
+    # normal method. use databases as defined in RUN-CONFIG
+    else:
+        for platform, manager in orchestrator.platform_managers.items():
+            row = calc_row(manager.platform_db.db_mgmt, platform)
             table.add_row(*row)
 
     console.print(table)
@@ -45,8 +67,8 @@ def complete_path(current: str):
 
 @app.command(short_help="Get the stats of a database. monthly or daily count")
 def db_stats(
-        db_path: Annotated[Optional[str], typer.Option(help="Path to sqlite database")],
-        daily_count: Annotated[bool, typer.Argument()] = False,
+        db_path: Annotated[str, typer.Option(help="Path to sqlite database")],
+        daily_count: Annotated[bool, typer.Option()] = False,
         store: bool = True):
     p = Path(db_path)
     if not p.exists():
@@ -75,6 +97,8 @@ def check_conflicts(item_type: Annotated[str, typer.Option(autocompletion=autoco
     conflicts_dir = BASE_DATA_PATH / f"conflicts"
     conflicts_dir.mkdir(parents=True, exist_ok=True)
     dest_file = conflicts_dir / f"{db1.stem}-{db2.stem}_{item_type}_{datetime.now():%Y%m%d_%H%M}.json"
+    print(conflicts)
+    print(f"Results dumped to: {dest_file}")
     json.dump(conflicts, dest_file.open("w", encoding="utf-8"))
 
 
@@ -87,6 +111,26 @@ def reset_undone_tasks(platforms: Optional[
             tasks_ids = [t.id for t in
                          manager.platform_db.get_tasks_of_states([CollectionStatus.DONE, CollectionStatus.INIT], True)]
             reset_task_states(manager.platform_db.db_mgmt, tasks_ids)
+
+
+@app.command(short_help="Merge 2 databases")
+def merge_dbs(
+        result_db: Path,
+        platform: str,
+        db1: Path,
+        db2: Path):
+    merger = DBMerger(result_db, platform)
+    merger.merge([db1, db2])
+
+
+@app.command(short_help="list task groups, by string-prefix")
+def merge_dbs(
+        result_db: Path,
+        platform: str,
+        db1: Path,
+        db2: Path):
+    merger = DBMerger(result_db, platform)
+    merger.merge([db1, db2])
 
 
 @app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")

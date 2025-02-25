@@ -22,6 +22,7 @@ class TimeConfig(BaseModel):
     start: str  # ISO format timestamp
     end: str  # ISO format timestamp
     interval: dict[str, int]  # maps directly to timedelta kwargs
+    timespan: Optional[dict[str, int]] = None  # instead of duration with the same as the interval use end_i - timespan
 
 
 class ClientTaskGroupConfig(BaseModel):

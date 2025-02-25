@@ -18,7 +18,7 @@ def generate_timestamps(time_config: TimeConfig) -> list[datetime]:
     """Generate list of timestamps from start to end with given interval."""
     # there is also pd.date_range which can be tried out
     start = datetime.fromisoformat(time_config.start)
-    end = datetime.fromisoformat(time_config.end) # 2023-3-01
+    end = datetime.fromisoformat(time_config.end)
     interval = timedelta(**time_config.interval)
 
     timestamps = []
@@ -56,7 +56,15 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
 
             # Add time parameters
             interval = timedelta(**config.time_config.interval)
-            conf['from_time'] = timestamp.isoformat()
+
+            if config.time_config.timespan:
+                timespan_ = timedelta(**config.time_config.timespan)
+                if timespan_ == interval:
+                    logging.getLogger("src.platform_orchestration").info(
+                        f"interval and timespan are equal. Using interval would be sufficient")
+                conf['from_time'] = (timestamp + interval - timespan_).isoformat()
+            else:
+                conf['from_time'] = timestamp.isoformat()
             conf['to_time'] = (timestamp + interval).isoformat()
             conf["test_data"] = config.test_data
 
@@ -89,13 +97,13 @@ def load_tasks(task_path: Path) -> tuple[Optional[ClientTaskGroupConfig], list[C
     data = read_data(abs_task_path)
     ct_cfg_err = None
 
-    if isinstance(data,list):
+    if isinstance(data, list):
         parsed_tasks = []
         for task_data in data:
             task = ClientTaskConfig.model_validate(task_data)
             task.source_file = task_path
             parsed_tasks.append(task)
-        return None, parsed_tasks # TODO TEMP
+        return None, parsed_tasks  # TODO TEMP
     try:
         task = ClientTaskConfig.model_validate(data)
         task.source_file = task_path
