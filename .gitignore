@@ -163,3 +163,4 @@ cython_debug/
 /.env
 /data/db.sqlite
 /prepare.sh
+/src/experiment/
