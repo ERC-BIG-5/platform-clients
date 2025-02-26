@@ -15,9 +15,11 @@ from databases.db_merge import DBMerger
 from databases.db_mgmt import DatabaseManager
 from databases.db_stats import generate_db_stats
 from databases.db_utils import reset_task_states, check_platforms, count_posts, TimeColumn
-from databases.external import CollectionStatus
+from databases.external import CollectionStatus, DBConfig, SQliteConnection
+from databases.meta_database import add_db
 from src.const import BASE_DATA_PATH
 from src.platform_orchestration import PlatformOrchestrator
+from tools.env_root import root
 from tools.project_logging import get_logger
 
 app = typer.Typer(name="Platform-Collection commands",
@@ -145,6 +147,20 @@ def merge_dbs(
     merger = DBMerger(result_db, platform)
     merger.merge([db1, db2])
 
+@app.command(short_help="Metadatabase keeps status, post numbers and other stats of all databases")
+def init_meta_database():
+    meta_db = DatabaseManager(config=DBConfig(
+        db_connection=SQliteConnection(db_path=root() / "data/col_db/new_main.sqlite"),
+        create=True,
+        require_existing_parent_dir=False,
+        tables=["platform_databases2"]
+    ))
+    meta_db.init_database()
+
+    if (db_file := (root() / "data/databases.json")).exists():
+        dbs = json.load(db_file.open( "r", encoding="utf-8"))
+        for db in dbs:
+            add_db(db, meta_db)
 
 @app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
 def collect():
