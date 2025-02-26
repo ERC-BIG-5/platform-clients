@@ -12,9 +12,10 @@ from rich.table import Table
 from databases import db_utils
 from databases.db_merge import DBMerger
 from databases.db_mgmt import DatabaseManager
-from databases.db_stats import count_posts, generate_db_stats, BASE_DATA_PATH
+from databases.db_stats import count_posts, generate_db_stats
 from databases.db_utils import reset_task_states, check_platforms
 from databases.external import CollectionStatus
+from src.const import BASE_DATA_PATH
 from src.platform_orchestration import PlatformOrchestrator
 from tools.project_logging import get_logger
 
@@ -39,7 +40,7 @@ def status(task_status: bool = True,
         else:
             status_numbers = []
         total_posts = str(count_posts(db_manager=db))
-        size = str(f"{int(db_utils.file_size(db) / (1024*1024))} Mb")
+        size = str(f"{int(db_utils.file_size(db) / (1024 * 1024))} Mb")
         return [platform_, total_posts, size] + status_numbers
 
     # use a database
@@ -76,7 +77,7 @@ def db_stats(
     if not p.exists():
         raise FileNotFoundError(f"File {db_path} does not exist")
 
-    stats = generate_db_stats(p, daily_count)
+    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(p, False), daily_count)
     print(stats.model_dump())
     if store:
         stats_dir = BASE_DATA_PATH / f"stats"
