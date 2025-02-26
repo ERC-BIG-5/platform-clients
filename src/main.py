@@ -11,10 +11,10 @@ from rich.console import Console
 from rich.table import Table
 
 from databases import db_utils
-from databases.c_db_stats import generate_db_stats
 from databases.db_merge import DBMerger
 from databases.db_mgmt import DatabaseManager
-from databases.db_utils import reset_task_states, check_platforms, count_posts, TimeWindow
+from databases.db_stats import generate_db_stats
+from databases.db_utils import reset_task_states, check_platforms, count_posts, TimeColumn
 from databases.external import CollectionStatus
 from src.const import BASE_DATA_PATH
 from src.platform_orchestration import PlatformOrchestrator
@@ -24,11 +24,14 @@ app = typer.Typer(name="Platform-Collection commands",
                   short_help="Information and process commands for platform collection")
 console = Console()
 
+
 # cuz Typer does not work with literals
 class TimeWindow_(str, Enum):
     DAY = "day"
     MONTH = "month"
     YEAR = "year"
+
+
 
 @app.command(short_help="Get the number of posts, and tasks statuses of all specified databases (RUN_CONFIG)")
 def status(task_status: bool = True,
@@ -78,12 +81,13 @@ def complete_path(current: str):
 def db_stats(
         db_path: Annotated[str, typer.Option(help="Path to sqlite database")],
         period: Annotated[TimeWindow_, typer.Option(help="day,month,year")] = TimeWindow_.DAY,
+        time_column: Annotated[TimeColumn, typer.Option(help="Time column")] = TimeColumn.CREATED,
         store: bool = True):
     p = Path(db_path)
     if not p.exists():
         raise FileNotFoundError(f"File {db_path} does not exist")
 
-    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(p, False), period.value)
+    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(p, False), period.value, time_column)
     print(stats.model_dump())
     if store:
         stats_dir = BASE_DATA_PATH / f"stats"
