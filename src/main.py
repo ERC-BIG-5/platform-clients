@@ -81,7 +81,7 @@ def complete_path(current: str):
 def db_stats(
         db_path: Annotated[str, typer.Option(help="Path to sqlite database")],
         period: Annotated[TimeWindow_, typer.Option(help="day,month,year")] = TimeWindow_.DAY,
-        time_column: Annotated[TimeColumn, typer.Option(help="Time column")] = TimeColumn.CREATED,
+        time_column: Annotated[TimeColumn, typer.Option(help="Time column ")] = TimeColumn.CREATED,
         store: bool = True):
     p = Path(db_path)
     if not p.exists():
