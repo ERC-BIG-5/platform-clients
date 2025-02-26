@@ -49,7 +49,7 @@ def status(task_status: bool = True,
             status_numbers = [str(tasks.get(t, 0)) for t in task_status_types]
         else:
             status_numbers = []
-        total_posts = str(count_posts(db_manager=db))
+        total_posts = str(count_posts(db=db))
         size = str(f"{int(db_utils.file_size(db) / (1024 * 1024))} Mb")
         return [platform_, total_posts, size] + status_numbers
 
@@ -161,6 +161,8 @@ def init_meta_database():
         dbs = json.load(db_file.open( "r", encoding="utf-8"))
         for db in dbs:
             add_db(db, meta_db)
+    else:
+        print(db_file, "does not exist")
 
 @app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
 def collect():
