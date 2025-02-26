@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Literal, Sequence, Union, Protocol, TYPE_CHECKING
+from typing import Optional, Literal, Sequence, Union, Protocol, TYPE_CHECKING, TypeAlias
 
 import itertools
 import more_itertools
@@ -16,7 +16,6 @@ from databases.db_models import DBPost, DBUser
 from databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
 from src.clients.abstract_client import AbstractClient, UserEntry, QuotaExceeded
 from src.const import ENV_FILE_PATH, CLIENTS_DATA_PATH
-
 from tools.project_logging import get_logger
 
 if TYPE_CHECKING:
@@ -222,8 +221,8 @@ class YoutubeSearchParameters(BaseModel):
 
 
 type TVYoutubeSearchParameters = YoutubeSearchParameters
-type PostDict = dict
-type UserDict = dict
+PostDict: TypeAlias = dict
+UserDict: TypeAlias = dict
 
 
 class YoutubePathConfig(BaseModel):
@@ -249,7 +248,7 @@ class YoutubeResource(Protocol):
         pass
 
 
-class YoutubeClient[TVYoutubeSearchParameters, PostDict, UserDict](AbstractClient):
+class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict]):
     ALL_PUBLIC_PART_OPTIONS = ["contentDetails", "liveStreamingDetails",
                                "paidProductPlacementDetails", "player", "status", "statistics", "topicDetails",
                                "localizations"]

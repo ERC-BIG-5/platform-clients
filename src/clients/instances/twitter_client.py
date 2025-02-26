@@ -11,9 +11,9 @@ from twscrape import API
 from twscrape.api import API as TwitterAPI
 
 from databases.db_models import DBPost, DBUser
-from databases.external import PostType, CollectConfig, ClientTaskConfig,ClientConfig
+from databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
 from src.clients.abstract_client import AbstractClient, UserEntry
-from src.clients.clients_models import  BaseEnvSettings
+from src.clients.clients_models import BaseEnvSettings
 from src.const import ENV_FILE_PATH
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ class TwitterResource(Protocol):
     async def pool(self): ...
 
 
-class TwitterClient(AbstractClient):
+class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
     """
     Updated Twitter client implementation using twscrape library
     """
@@ -81,7 +81,6 @@ class TwitterClient(AbstractClient):
             self.settings = TwitterAuthSettings()
 
         self.api = API()  # or API("path-to.db") for custom DB path
-
 
     async def initialize_auth(self):
         """Initialize authentication with Twitter"""
@@ -114,7 +113,7 @@ class TwitterClient(AbstractClient):
 
     def transform_config(self, abstract_config: CollectConfig) -> TwitterSearchParameters:
         """Transform generic config to Twitter-specific parameters"""
-        return TwitterSearchParameters.model_validate(abstract_config, from_attributes = True)
+        return TwitterSearchParameters.model_validate(abstract_config, from_attributes=True)
 
     async def collect(self, generic_config: CollectConfig) -> list[dict]:
         """Collect tweets based on search parameters"""
@@ -161,4 +160,3 @@ class TwitterClient(AbstractClient):
             platform="twitter",
             platform_username=user.get('username')
         )
-

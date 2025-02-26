@@ -9,9 +9,6 @@ from databases.external import ClientConfig
 from src.const import ENV_FILE_PATH
 
 
-class EmptyModel(BaseModel):
-    pass
-
 
 class RunConfig(BaseModel):
     model_config = {'extra': "forbid", "from_attributes": True}

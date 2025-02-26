@@ -122,7 +122,7 @@ class PlatformOrchestrator:
         check for json file in the specific folder and add them into the sdb
         :return: returns a list of task names
         """
-        added_tasks = []
+        added_tasks:list[str] = []
         missing_platform_managers: set[str] = set()
 
         files = []
