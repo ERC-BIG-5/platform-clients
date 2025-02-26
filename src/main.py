@@ -32,7 +32,6 @@ class TimeWindow_(str, Enum):
     YEAR = "year"
 
 
-
 @app.command(short_help="Get the number of posts, and tasks statuses of all specified databases (RUN_CONFIG)")
 def status(task_status: bool = True,
            databases: Optional[
@@ -81,13 +80,13 @@ def complete_path(current: str):
 def db_stats(
         db_path: Annotated[str, typer.Option(help="Path to sqlite database")],
         period: Annotated[TimeWindow_, typer.Option(help="day,month,year")] = TimeWindow_.DAY,
-        time_column: Annotated[TimeColumn, typer.Option(help="Time column ")] = TimeColumn.CREATED,
+        time_column: Annotated[TimeColumn, typer.Option(help="Time column created or collected")] = TimeColumn.CREATED,
         store: bool = True):
     p = Path(db_path)
     if not p.exists():
         raise FileNotFoundError(f"File {db_path} does not exist")
 
-    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(p, False), period.value, time_column)
+    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(p, False), period, time_column)
     print(stats.model_dump())
     if store:
         stats_dir = BASE_DATA_PATH / f"stats"
@@ -96,6 +95,7 @@ def db_stats(
         json.dump(stats.model_dump(), dest.open("w", encoding="utf-8"))
 
 
+# todo, use Enum
 def autocomplete_conflict_types() -> list[str]:
     return ["post", "task"]
 
