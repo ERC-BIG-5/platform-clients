@@ -80,16 +80,16 @@ def complete_path(current: str):
 
 @app.command(short_help="Get the stats of a database. monthly or daily count")
 def db_stats(
-        db_path: Annotated[str, typer.Option(help="Path to sqlite database")],
+        db_path: Annotated[Path, typer.Option(help="Path to sqlite database")],
         period: Annotated[TimeWindow_, typer.Option(help="day,month,year")] = TimeWindow_.DAY,
         time_column: Annotated[TimeColumn, typer.Option(help="Time column created or collected")] = TimeColumn.CREATED,
         store: bool = True):
-    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(db_path, False), period, time_column)
+    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(db_path, False), period)
     print(stats.model_dump())
     if store:
         stats_dir = BASE_DATA_PATH / f"stats"
         stats_dir.mkdir(parents=True, exist_ok=True)
-        dest = stats_dir / f"{p.stem}-{datetime.now():%Y%m%d_%H%M}.json"
+        dest = stats_dir / f"{db_path.stem}-{datetime.now():%Y%m%d_%H%M}.json"
         json.dump(stats.model_dump(), dest.open("w", encoding="utf-8"))
 
 
@@ -188,4 +188,5 @@ if __name__ == '__main__':
     # else:
     #     main()
     # app()
-    collect()
+    # collect()
+    db_stats("data/col_db/tiktok/rm/tiktok.sqlite")
