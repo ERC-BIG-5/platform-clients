@@ -14,8 +14,8 @@ from databases import db_utils
 from databases.db_merge import DBMerger
 from databases.db_mgmt import DatabaseManager
 from databases.db_stats import generate_db_stats
-from databases.db_utils import reset_task_states, check_platforms, count_posts, TimeColumn
-from databases.external import CollectionStatus, DBConfig, SQliteConnection
+from databases.db_utils import reset_task_states, check_platforms, count_posts
+from databases.external import CollectionStatus, DBConfig, SQliteConnection, TimeColumn
 from databases.meta_database import add_db
 from src.const import BASE_DATA_PATH
 from src.platform_orchestration import PlatformOrchestrator
@@ -84,11 +84,7 @@ def db_stats(
         period: Annotated[TimeWindow_, typer.Option(help="day,month,year")] = TimeWindow_.DAY,
         time_column: Annotated[TimeColumn, typer.Option(help="Time column created or collected")] = TimeColumn.CREATED,
         store: bool = True):
-    p = Path(db_path)
-    if not p.exists():
-        raise FileNotFoundError(f"File {db_path} does not exist")
-
-    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(p, False), period, time_column)
+    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(db_path, False), period, time_column)
     print(stats.model_dump())
     if store:
         stats_dir = BASE_DATA_PATH / f"stats"
@@ -144,8 +140,7 @@ def merge_dbs(
         platform: str,
         db1: Path,
         db2: Path):
-    merger = DBMerger(result_db, platform)
-    merger.merge([db1, db2])
+    pass
 
 @app.command(short_help="Metadatabase keeps status, post numbers and other stats of all databases")
 def init_meta_database():
