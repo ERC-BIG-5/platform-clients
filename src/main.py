@@ -188,5 +188,5 @@ if __name__ == '__main__':
     # else:
     #     main()
     # app()
-    # collect()
-    db_stats("data/col_db/tiktok/rm/tiktok.sqlite")
+    collect()
+    # db_stats("data/col_db/tiktok/rm/tiktok.sqlite")
