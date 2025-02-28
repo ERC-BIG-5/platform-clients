@@ -57,10 +57,6 @@ class PlatformManager(Generic[T_Client], ABC):
         """Add a new collection task"""
         return self.platform_db.add_db_collection_task(task)
 
-    def get_pending_tasks(self) -> list[ClientTaskConfig]:
-        """Get all tasks that need to be executed"""
-        return self.platform_db.get_pending_tasks()
-
     def has_quota_halt(self) -> Optional[datetime]:
         """
         @returns: datetime if there is a halt, else None
@@ -81,7 +77,7 @@ class PlatformManager(Generic[T_Client], ABC):
 
     async def process_all_tasks(self):
         """Process all pending tasks"""
-        tasks = self.get_pending_tasks()
+        tasks = self.platform_db.get_pending_tasks()
         self.logger.info(f"Task queue: {len(tasks)}")
         self._setup_client()
         for idx, task in enumerate(tasks):

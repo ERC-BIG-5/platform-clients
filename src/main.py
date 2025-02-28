@@ -134,14 +134,6 @@ def merge_dbs(
     merger.merge([db1, db2])
 
 
-@app.command(short_help="list task groups, by string-prefix")
-def merge_dbs(
-        result_db: Path,
-        platform: str,
-        db1: Path,
-        db2: Path):
-    pass
-
 @app.command(short_help="Metadatabase keeps status, post numbers and other stats of all databases")
 def init_meta_database():
     meta_db = DatabaseManager(config=DBConfig(

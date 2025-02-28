@@ -1,4 +1,5 @@
 import asyncio
+import warnings
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Literal, Sequence, Union, Protocol, TYPE_CHECKING, TypeAlias
@@ -262,7 +263,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         super().__init__(config, manager)
         self.client: YoutubeResource = None
         self.logger = get_logger(__name__)
-        # todo refactor this into a superclass or interface
+        # todo this can go, since the datapipeline is taking care of downloads
         self.path_config = YoutubePathConfig(pn=CLIENTS_DATA_PATH / self.platform_name)
 
     def setup(self):
@@ -273,11 +274,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         #                                                         for k, v in self.config.auth_config.items()})
         # else:
         self.settings = GoogleAPIKeySetting()
-
         self.client = build('youtube', 'v3', developerKey=self.settings.GOOGLE_API_KEYS.get_secret_value())
-
-        if self.config.request_delay:
-            self.request_delay = self.config.request_delay
 
     def transform_config(self, abstract_config: CollectConfig) -> YoutubeSearchParameters:
         return YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
@@ -390,6 +387,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         pass
 
     # Function to download and convert a YouTube video to MP3 format using yt-dlp
+    @warnings.deprecated("this is not really the concern of the client anymore. but of the pipeline")
     def download_video_as_mp3(self, video_id) -> Path | None:
         video_url = f"{YT_VID_URL_PRE}{video_id}"
         dest_path = self.path_config.mp3s / f"{video_id}.mp3"
@@ -419,6 +417,3 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         except Exception as e:
             print(f"Error downloading {video_url}: {e}")
             return None  # Return None if an error occurs
-
-    # print()
-    # audio_file = os.path.join(output_path, sanitized_title + '.mp3')
