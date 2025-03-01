@@ -45,7 +45,7 @@ def status(task_status: bool = True,
 
     def calc_row(db: DatabaseManager, platform_: str) -> list[str | int]:
         if task_status:
-            tasks = db.count_states()
+            tasks = db_utils.count_states(db)
             status_numbers = [str(tasks.get(t, 0)) for t in task_status_types]
         else:
             status_numbers = []
@@ -171,14 +171,4 @@ def collect():
 
 
 if __name__ == '__main__':
-    # if len(sys.argv) > 1:
-    #     print(sys.argv[1])
-    #     if sys.argv[1] == "status":
-    #         status()
-    #     else:
-    #         print("Unknown command")
-    # else:
-    #     main()
-    # app()
     collect()
-    # db_stats("data/col_db/tiktok/rm/tiktok.sqlite")

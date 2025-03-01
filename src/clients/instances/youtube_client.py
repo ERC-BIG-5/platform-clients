@@ -387,8 +387,8 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         pass
 
     # Function to download and convert a YouTube video to MP3 format using yt-dlp
-    @warnings.deprecated("this is not really the concern of the client anymore. but of the pipeline")
     def download_video_as_mp3(self, video_id) -> Path | None:
+        warnings.warn("this is not really the concern of the client anymore. but of the pipeline")
         video_url = f"{YT_VID_URL_PRE}{video_id}"
         dest_path = self.path_config.mp3s / f"{video_id}.mp3"
         if dest_path.exists():

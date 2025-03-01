@@ -147,6 +147,7 @@ class PlatformOrchestrator:
                     continue
 
                 manager = self.platform_managers[task.platform]
+                # TODO VERY INEFFICIENT ADDING ONE TASK AT A TIME
                 if manager.add_task(task, task_group):
                     added_tasks.append(task.task_name)
                     # Register platform database in main DB
