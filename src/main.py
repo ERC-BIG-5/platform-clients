@@ -15,7 +15,7 @@ from databases.db_merge import DBMerger
 from databases.db_mgmt import DatabaseManager
 from databases.db_stats import generate_db_stats
 from databases.db_utils import reset_task_states, check_platforms, count_posts
-from databases.external import CollectionStatus, DBConfig, SQliteConnection, TimeColumn
+from databases.external import CollectionStatus, DBConfig, SQliteConnection, DBStats
 from databases.meta_database import add_db
 from src.const import BASE_DATA_PATH
 from src.platform_orchestration import PlatformOrchestrator
@@ -80,17 +80,38 @@ def complete_path(current: str):
 
 @app.command(short_help="Get the stats of a database. monthly or daily count")
 def db_stats(
-        db_path: Annotated[Path, typer.Option(help="Path to sqlite database")],
+        db_path: Annotated[Optional[Path], typer.Argument(help="Path to sqlite database")] = None,
         period: Annotated[TimeWindow_, typer.Option(help="day,month,year")] = TimeWindow_.DAY,
-        time_column: Annotated[TimeColumn, typer.Option(help="Time column created or collected")] = TimeColumn.CREATED,
+        use_last_if_available: bool = typer.Option(True),
         store: bool = True):
-    stats = generate_db_stats(DatabaseManager.sqlite_db_from_path(db_path, False), period)
-    print(stats.model_dump())
-    if store:
+
+    def stats_for(db: DatabaseManager):
         stats_dir = BASE_DATA_PATH / f"stats"
         stats_dir.mkdir(parents=True, exist_ok=True)
-        dest = stats_dir / f"{db_path.stem}-{datetime.now():%Y%m%d_%H%M}.json"
-        json.dump(stats.model_dump(), dest.open("w", encoding="utf-8"))
+        db_path = db.config.db_connection.db_path
+        create_stats = not use_last_if_available
+        stats = None
+        if not create_stats:
+            stats_files = list(stats_dir.glob(f"{db_path.stem}-*.json"))
+            if len(stats_files) >= 1:
+                stats_file = sorted(stats_files)[-1]
+                stats = DBStats.model_validate(json.load(stats_file.open()))
+            else:
+                create_stats = True
+        if create_stats:
+            stats = generate_db_stats(db, period)
+        print(stats.model_dump())
+        if store and create_stats:
+            dest = stats_dir / f"{db_path.stem}-{datetime.now():%Y%m%d_%H%M}.json"
+            json.dump(stats.model_dump(), dest.open("w", encoding="utf-8"), indent=2)
+
+
+    if not db_path:
+        orchestrator = PlatformOrchestrator()
+        for platform, manager in orchestrator.platform_managers.items():
+            stats_for(manager.platform_db.db_mgmt)
+    else:
+        stats_for(DatabaseManager.sqlite_db_from_path(db_path, False))
 
 
 # todo, use Enum
@@ -171,4 +192,5 @@ def collect():
 
 
 if __name__ == '__main__':
-    collect()
+    # collect()
+    db_stats(store=False)
