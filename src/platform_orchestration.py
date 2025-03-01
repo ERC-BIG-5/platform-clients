@@ -11,7 +11,7 @@ from databases.external import DBConfig, ClientConfig
 from databases.model_conversion import PlatformDatabaseModel
 from src.clients.clients_models import RunConfig
 from src.clients.task_groups import load_tasks
-from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config
+from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config, BASE_DATA_PATH
 from src.misc.platform_quotas import load_quotas
 from src.platform_manager import PlatformManager
 from src.platform_mgmt.tiktok_manager import TikTokManager
@@ -36,7 +36,7 @@ class PlatformOrchestrator:
         if not self.__instance:
             self.platform_managers: dict[str, PlatformManager] = {}
             self.run_config = RunConfig.model_validate(read_run_config())
-            self.main_db = DatabaseManager(DatabaseManager.get_main_db_config())
+            self.main_db = DatabaseManager.sqlite_db_from_path(BASE_DATA_PATH / "main.sqlite")
             self.logger = get_logger(__name__)
             self.initialize_platform_managers()
             self.__instance = self
@@ -48,7 +48,6 @@ class PlatformOrchestrator:
             return [o.model() for o in session.query(DBPlatformDatabase).all()]
 
     def initialize_platform_managers(self, config: Optional[RunConfig] = None):
-
         """Initialize managers for specified platforms or all registered platforms"""
         if not config:
             config = self.run_config
@@ -58,7 +57,6 @@ class PlatformOrchestrator:
         for platform in config.clients:
             if platform not in [p.platform for p in registered_platforms]:
                 self.add_platform_db(platform, config.clients[platform].db_config)
-                # self.logger.warning(f"Platform '{platform}' not registered in main database")
 
             manager_class = PLATFORM_MANAGERS.get(platform)
             if not manager_class:
@@ -75,16 +73,11 @@ class PlatformOrchestrator:
 
             # Load from environment or config
             # Initialize platform manager
-            platform_quotas = load_quotas()
-            try:
 
+            try:
                 manager = manager_class(client_config)
                 self.platform_managers[platform] = manager
                 self.logger.debug(f"Initialized manager for platform: {platform}")
-                if manager.platform_name() in platform_quotas:
-                    manager.current_quota_halt = platform_quotas[manager.platform_name()]
-                    self.logger.info(
-                        f"{manager.platform_name()} has a halting quota until {manager.current_quota_halt}")
             except Exception as e:
                 self.logger.error(f"Failed to initialize manager for {platform}: {str(e)}")
                 raise e
@@ -98,19 +91,19 @@ class PlatformOrchestrator:
 
     async def progress_tasks(self, platforms: list[str] = None):
         """Progress tasks for specified platforms or all platforms"""
-
         # Create tasks for each platform
         # platform_tasks = []
+        platform_quotas = load_quotas()
         for platform, manager in self.platform_managers.items():
+            if platforms and platform not in platforms:
+                continue
             if not self.run_config.clients[platform].progress:
                 self.logger.info(f"Progress for platform: '{platform}' deactivated")
                 continue
+            manager.current_quota_halt = platform_quotas.get(platform)
             if halt_until := manager.has_quota_halt():
                 self.logger.info(
                     f"Progress for platform: '{platform}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
-                continue
-            if platforms and platform not in platforms:
-                self.logger.warning(f"undefined platform: '{platform}'")
                 continue
             coro_task = asyncio.create_task(manager.process_all_tasks())
             self.current_tasks.append(coro_task)
@@ -122,7 +115,7 @@ class PlatformOrchestrator:
         check for json file in the specific folder and add them into the sdb
         :return: returns a list of task names
         """
-        added_tasks:list[str] = []
+        added_tasks: list[str] = []
         missing_platform_managers: set[str] = set()
 
         files = []
