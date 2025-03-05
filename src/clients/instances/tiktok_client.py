@@ -147,14 +147,17 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
                 "field_name": "region_code", "field_values": EU_COUNTRY_CODES,"operation":"in"
             }]}
 
+        print(abstract_config.model_dump())
+
         query = QueryModel.model_validate(abstract_config.query)
+        is_random = getattr(abstract_config, "is_random") or True
 
         if not hasattr(abstract_config, "fields"):
             abstract_config.fields = PUBLIC_VIDEO_QUERY_FIELDS
         return QueryVideoRequest(start_date=start_time_s,
                                  query=query.to_query(),
                                  end_date=end_date_s,
-                                 is_random=abstract_config.is_random,
+                                 is_random=is_random,
                                  fields=",".join(abstract_config.fields),
                                  max_count=min(100, abstract_config.limit),
                                  max_total=abstract_config.limit)
