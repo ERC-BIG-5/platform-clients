@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from databases import db_utils
+from databases.c_db_merge import merge_database
 from databases.db_merge import DBMerger
 from databases.db_mgmt import DatabaseManager
 from databases.db_stats import generate_db_stats
@@ -84,7 +85,6 @@ def db_stats(
         period: Annotated[TimeWindow_, typer.Option(help="day,month,year")] = TimeWindow_.DAY,
         use_last_if_available: bool = typer.Option(True),
         store: bool = True):
-
     def stats_for(db: DatabaseManager):
         stats_dir = BASE_DATA_PATH / f"stats"
         stats_dir.mkdir(parents=True, exist_ok=True)
@@ -104,7 +104,6 @@ def db_stats(
         if store and create_stats:
             dest = stats_dir / f"{db_path.stem}-{datetime.now():%Y%m%d_%H%M}.json"
             json.dump(stats.model_dump(), dest.open("w", encoding="utf-8"), indent=2)
-
 
     if not db_path:
         orchestrator = PlatformOrchestrator()
@@ -147,12 +146,10 @@ def reset_undone_tasks(platforms: Optional[
 
 @app.command(short_help="Merge 2 databases")
 def merge_dbs(
-        result_db: Path,
-        platform: str,
-        db1: Path,
-        db2: Path):
-    merger = DBMerger(result_db, platform)
-    merger.merge([db1, db2])
+        src_db: Path,
+        target_db: Path):
+    stats = merge_database(src_db, target_db)
+    print(stats)
 
 
 @app.command(short_help="Metadatabase keeps status, post numbers and other stats of all databases")
@@ -166,11 +163,12 @@ def init_meta_database():
     meta_db.init_database()
 
     if (db_file := (root() / "data/databases.json")).exists():
-        dbs = json.load(db_file.open( "r", encoding="utf-8"))
+        dbs = json.load(db_file.open("r", encoding="utf-8"))
         for db in dbs:
             add_db(db, meta_db)
     else:
         print(db_file, "does not exist")
+
 
 @app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
 def collect():
@@ -192,5 +190,5 @@ def collect():
 
 
 if __name__ == '__main__':
-    # collect()
-    db_stats(store=False)
+    collect()
+    # db_stats(store=False)

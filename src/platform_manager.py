@@ -72,6 +72,8 @@ class PlatformManager(Generic[T_Client], ABC):
         try:
             host, port, path = BIG5_CONFIG.send_post_host, BIG5_CONFIG.send_post_port, BIG5_CONFIG.send_post_path
             httpx.post(f"{host}:{port}/{path}", json=[p.model_dump() for p in result.added_posts])
+        except Exception as e:
+            self.logger.error(e)
         except httpx.HTTPError as e:
             self.logger.warning(f"send_results failed: {e}")
 

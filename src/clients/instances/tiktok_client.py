@@ -154,6 +154,7 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
         return QueryVideoRequest(start_date=start_time_s,
                                  query=query.to_query(),
                                  end_date=end_date_s,
+                                 is_random=abstract_config.is_random,
                                  fields=",".join(abstract_config.fields),
                                  max_count=min(100, abstract_config.limit),
                                  max_total=abstract_config.limit)
