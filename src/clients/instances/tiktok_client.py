@@ -69,7 +69,7 @@ class QueryModel(BaseModel):
 
     def to_query(self) -> Query:
         if not self.and_ and not self.or_ and not self.not_:
-            self.and_.append(CriteriaModel(operation="IN",field_values=EU_COUNTRY_CODES,field_name="region_code"))
+            self.and_.append(CriteriaModel(operation="IN", field_values=EU_COUNTRY_CODES, field_name="region_code"))
         return Query(
             and_criteria=[criteria.to_criteria() for criteria in self.and_],
             or_criteria=[criteria.to_criteria() for criteria in self.or_],
@@ -126,12 +126,12 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
 
     def setup(self):
         self.settings = TikTokPISetting()
-        #print(self.settings.RATE_LIMIT)
+        # print(self.settings.RATE_LIMIT)
         self.client = TikTokResearchAPI(self.settings.TIKTOK_CLIENT_KEY,
                                         self.settings.TIKTOK_CLIENT_SECRET.get_secret_value(),
                                         self.settings.RATE_LIMIT,
                                         retry_sleep_time=7)
-        #print(self.client.retry_sleep_time)
+        # print(self.client.retry_sleep_time)
 
     def transform_config(self, abstract_config: CollectConfig) -> QueryVideoRequest:
         if abstract_config.from_time:
@@ -143,14 +143,17 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
 
         # keyword <- abstract_config.query
         if not abstract_config.query:
-            abstract_config.query = {"and_":[{
-                "field_name": "region_code", "field_values": EU_COUNTRY_CODES,"operation":"in"
+            abstract_config.query = {"and_": [{
+                "field_name": "region_code", "field_values": EU_COUNTRY_CODES, "operation": "in"
             }]}
 
-        print(abstract_config.model_dump())
+        # print(abstract_config.model_dump())
 
         query = QueryModel.model_validate(abstract_config.query)
-        is_random = getattr(abstract_config, "is_random") or True
+        if hasattr(abstract_config, "is_random"):
+            is_random = getattr(abstract_config, "is_random")
+        else:
+            is_random = False
 
         if not hasattr(abstract_config, "fields"):
             abstract_config.fields = PUBLIC_VIDEO_QUERY_FIELDS
@@ -169,7 +172,7 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
         while True:
             try:
                 videos, search_id, cursor, has_more, start_date, end_date, error = self.client.query_videos(config,
-                                                                                                     fetch_all_pages=True)
+                                                                                                            fetch_all_pages=True)
             except JSONDecodeError as exc:
                 print(exc)
                 # todo, stop? mark abort
