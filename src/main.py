@@ -38,7 +38,7 @@ class TimeWindow_(str, Enum):
 @app.command(short_help="Get the number of posts, and tasks statuses of all specified databases (RUN_CONFIG)")
 def status(task_status: bool = True,
            databases: Optional[
-               Annotated[list[Path], typer.Option(help="Use this database instead of the RUN_CONFIG dbs")]] = None):
+                   Annotated[list[Path], typer.Option(help="Use this database instead of the RUN_CONFIG dbs")]] = None):
     orchestrator = PlatformOrchestrator()
 
     task_status_types = ["done", "init", "paused", "aborted"] if task_status else []
