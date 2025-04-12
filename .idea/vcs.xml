@@ -2,7 +2,6 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../Tools" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../Tools/omnivision-968M" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/big5_databases" vcs="Git" />
   </component>
 </project>

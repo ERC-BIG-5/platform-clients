@@ -1,0 +1,30 @@
+[project]
+name = "platform-clients"
+version = "0.9.0"
+description = "Platform clients package for social media data collection"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "deprecated>=1.2.18",
+    "httpx>=0.28.1",
+    "matplotlib>=3.10.1",
+    "orjson>=3.10.16",
+    "pandas>=2.2.3",
+    "pydantic-settings>=2.8.1",
+    "pydantic>=2.11.3",
+    "pyyaml>=6.0.2",
+    "rich>=14.0.0",
+    "seaborn>=0.13.2",
+    "sqlalchemy-utils>=0.41.2",
+    "sqlalchemy>=2.0.40",
+    "tools>=0.1.9",
+    "tqdm>=4.67.1",
+    "typer>=0.15.2",
+]
+
+[project.optional-dependencies]
+youtube = [
+    "google-api-python-client>=2.166.0",
+    "more-itertools>=10.6.0",
+    "pyrfc3339>=2.0.1",
+]

@@ -13,9 +13,13 @@ git clone <tools repo>
 uv init ? uv sync  ?
 
 2.
-
 copy template.env and name the new file: .env
 
+3. 
+run `prepare.sh` for each new shell you are running the client in
+
+4.
+`run typer src/main.py run init`
 
 
 ## Running commands

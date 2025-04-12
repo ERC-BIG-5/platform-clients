@@ -17,7 +17,7 @@ from databases.db_mgmt import DatabaseManager
 from databases.db_stats import generate_db_stats
 from databases.db_utils import reset_task_states, check_platforms, count_posts
 from databases.external import CollectionStatus, DBConfig, SQliteConnection, DBStats
-from databases.meta_database import add_db
+from databases.meta_database import add_db, MetaDatabase
 from src.const import BASE_DATA_PATH
 from src.platform_orchestration import PlatformOrchestrator
 from tools.env_root import root
@@ -34,6 +34,9 @@ class TimeWindow_(str, Enum):
     MONTH = "month"
     YEAR = "year"
 
+@app.command()
+def init():
+    MetaDatabase(True)
 
 @app.command(short_help="Get the number of posts, and tasks statuses of all specified databases (RUN_CONFIG)")
 def status(task_status: bool = True,

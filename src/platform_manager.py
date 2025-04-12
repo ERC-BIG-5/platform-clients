@@ -147,3 +147,7 @@ class PlatformManager(Generic[T_Client], ABC):
     @abstractmethod
     def platform_name(self) -> str:
         ...
+
+    @staticmethod
+    def platform_tables() -> list[str]:
+        return PlatformDB.platform_tables()

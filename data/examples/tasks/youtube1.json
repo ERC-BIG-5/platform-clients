@@ -1,0 +1,20 @@
+{
+  "platform": "youtube",
+  "task_name": "youtube_example1",
+  "collection_config": {
+    "limit": 10,
+    "from_time":  "2024-01-01T00:00:00Z",
+    "to_time":  "2024-01-24T00:00:00Z",
+    "part": [
+      "contentDetails",
+      "snippet",
+      "status",
+      "statistics",
+      "topicDetails",
+      "localizations"
+    ]
+  },
+  "transient": false,
+  "test": false,
+  "overwrite": false
+}

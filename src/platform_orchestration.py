@@ -14,9 +14,8 @@ from src.clients.task_groups import load_tasks
 from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config, BASE_DATA_PATH
 from src.misc.platform_quotas import load_quotas
 from src.platform_manager import PlatformManager
-from src.platform_mgmt.tiktok_manager import TikTokManager
-from src.platform_mgmt.twitter_manager import TwitterManager
-from src.platform_mgmt.youtube_manager import YoutubeManager
+
+
 from tools.project_logging import get_logger
 
 
@@ -33,10 +32,16 @@ class PlatformOrchestrator:
         return super().__new__(cls)
 
     def __init__(self):
+        self.logger = get_logger(__file__)
         if not self.__instance:
             self.platform_managers: dict[str, PlatformManager] = {}
             self.run_config = RunConfig.model_validate(read_run_config())
-            self.main_db = DatabaseManager.sqlite_db_from_path(BASE_DATA_PATH / "main.sqlite")
+            try:
+                self.main_db = DatabaseManager.sqlite_db_from_path(BASE_DATA_PATH / "dbs/main.sqlite")
+            except ValueError as e:
+                self.logger.error(e)
+                self.logger.error("Run command 'init' (typer src/main.py run init)")
+                exit(1)
             self.logger = get_logger(__name__)
             self.initialize_platform_managers()
             self.__instance = self
@@ -54,18 +59,25 @@ class PlatformOrchestrator:
 
         registered_platforms = self._get_registered_platforms()
 
+        platform_managers: dict[str, PlatformManager] = get_platforms(set(config.clients))
+
         for platform in config.clients:
             if platform not in [p.platform for p in registered_platforms]:
                 self.add_platform_db(platform, config.clients[platform].db_config)
 
-            manager_class = PLATFORM_MANAGERS.get(platform)
+            manager_class = platform_managers.get(platform)
             if not manager_class:
                 self.logger.error(
-                    f"No manager implementation found for platform: {platform}. "
+                    f"No manager implementation found for platform: '{platform}'. "
                     f"Add it to the platform_orchestration.py file: 'PLATFORM_MANAGERS'")
+                continue
 
             client_config = ClientConfig.model_validate(
                 RUN_CONFIG["clients"][platform])
+
+            client_config.db_config.tables = PlatformManager.platform_tables()
+
+            # add client tables
 
             # todo check main db, first for a default_db for platform, then use this
             # if not client_config.db_config:
@@ -86,7 +98,8 @@ class PlatformOrchestrator:
         with self.main_db.get_session() as session:
             if session.query(exists().where(DBPlatformDatabase.platform == platform)).scalar():
                 return
-            session.add(DBPlatformDatabase(platform=platform, connection_str=db_config.connection_str))
+            session.add(DBPlatformDatabase(platform=platform,
+                                           db_path=db_config.db_connection.db_path.as_posix(), is_default=True))
             session.commit()
 
     async def progress_tasks(self, platforms: list[str] = None):
@@ -173,9 +186,32 @@ class PlatformOrchestrator:
 
 T = TypeVar('T', bound=PlatformManager)
 # Register platform-specific managers
-PLATFORM_MANAGERS: dict[str, Type[T]] = {
-    "twitter": TwitterManager,
-    "youtube": YoutubeManager,
-    "tiktok": TikTokManager
-    # Add other platforms here
-}
+
+
+def get_platforms(platforms: set[str]) -> dict[str, T]:
+
+    platform_managers: dict[str, T] = {}
+
+    for platform in platforms:
+        if platform == "tiktok":
+            try:
+                from src.platform_mgmt.tiktok_manager import TikTokManager
+                platform_managers[platform] = TikTokManager
+            except ModuleNotFoundError:
+                pass
+        if platform == "twitter":
+            try:
+                from src.platform_mgmt.twitter_manager import TwitterManager
+                platform_managers[platform] = TwitterManager
+            except ModuleNotFoundError:
+                pass
+        if platform == "youtube":
+            try:
+                from src.platform_mgmt.youtube_manager import YoutubeManager
+                platform_managers[platform] = YoutubeManager
+            except ModuleNotFoundError:
+                print("aha")
+        else:
+            print(f"unknown platform: {platform}")
+
+    return platform_managers

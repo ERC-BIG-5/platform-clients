@@ -7,7 +7,7 @@ from typing import Optional, Literal, Sequence, Union, Protocol, TYPE_CHECKING, 
 import itertools
 import more_itertools
 import pyrfc3339
-import yt_dlp
+# import yt_dlp
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from pydantic import SecretStr, BaseModel, Field, field_validator, field_serializer

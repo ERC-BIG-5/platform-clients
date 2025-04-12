@@ -164,3 +164,8 @@ cython_debug/
 /data/db.sqlite
 /prepare.sh
 /src/experiment/
+/data/processed_tasks/
+/data/dbs/
+/.python-version
+/data/log_conf.json
+/uv.lock
