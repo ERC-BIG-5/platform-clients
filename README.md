@@ -1,7 +1,22 @@
 # platforms-clients
 
 the repo, contains all the clients for the different platforms and manages the download of social media metadata and
-store it in a database
+store it in a database.
+
+# Installation
+
+git clone <this_repo>
+git clone <databases_repo>
+git clone <tools repo>
+
+1. 
+uv init ? uv sync  ?
+
+2.
+
+copy template.env and name the new file: .env
+
+
 
 ## Running commands
 
