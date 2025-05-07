@@ -6,20 +6,23 @@ store it in a database.
 # Installation
 
 git clone <this_repo>
-git clone <databases_repo>
-git clone <tools repo>
+
 
 1. 
-uv init ? uv sync  ?
+uv sync
 
 2.
+install optional dependencies based on the platform you want to use
+uv sync -e <platform>
+uv sync -e youtube
+uv sync -e twitter
+
 copy template.env and name the new file: .env
 
-3. 
-run `prepare.sh` for each new shell you are running the client in
+and comment in the lines for the platforms you want to use.
 
-4.
-`run typer src/main.py run init`
+3.
+run `typer src/main.py run init`
 
 
 ## Running commands
