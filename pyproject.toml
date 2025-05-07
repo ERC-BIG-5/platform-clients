@@ -29,3 +29,7 @@ youtube = [
     "more-itertools>=10.6.0",
     "pyrfc3339>=2.0.1",
 ]
+
+twitter = [
+    "twscrape>=0.17.0",
+]
