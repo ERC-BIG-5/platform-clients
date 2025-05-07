@@ -205,16 +205,14 @@ def get_platforms(platforms: set[str]) -> dict[str, T]:
                 platform_managers[platform] = TwitterManager
             except ModuleNotFoundError as err:
                 print(err)
-                print("You might want to run `uv sync --extra 'twitter'")
-            #     pass
-            # except Exception as err:
-            #     print(err)
+                print("You might want to run `uv sync --extra twitter")
         elif platform == "youtube":
             try:
                 from src.platform_mgmt.youtube_manager import YoutubeManager
                 platform_managers[platform] = YoutubeManager
-            except ModuleNotFoundError:
-                print("aha")
+            except ModuleNotFoundError as err:
+                print(err)
+                print("You might want to run `uv sync --extra youtube")
         else:
             print(f"unknown platform: {platform}")
 

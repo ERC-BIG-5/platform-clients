@@ -7,34 +7,32 @@ store it in a database.
 
 git clone <this_repo>
 
-
 1. 
 uv sync
 
 2.
 install optional dependencies based on the platform you want to use
-uv sync -e <platform>
-uv sync -e youtube
-uv sync -e twitter
+uv sync -e <platform> e.g.
+`uv sync -e youtube`
+`uv sync -e twitter`
 
 copy template.env and name the new file: .env
 
-and comment in the lines for the platforms you want to use.
+and comment in the lines for the credential of the platforms you want to use.
 
 3.
-run `typer src/main.py run init`
+run `typer main.py run init`
 
+This will create the main databse located in `data/dbs/main.sqlite`
 
 ## Running commands
 
 Running commands with Typer:
 
-first source run.sh to have the projects it depends on for the PYTHONPATH
-
 commands:
 
-- status: Gives a status on the defined databases (in the RUN_CONFIG)
 - collect: Collect with the current RUN_CONFIG
+- status: Gives a status on the defined databases (in the RUN_CONFIG)
 - db-stats: Get the stats post-count per month/day
 
 ### Diagram
