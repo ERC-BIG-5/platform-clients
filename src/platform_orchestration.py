@@ -83,13 +83,10 @@ class PlatformOrchestrator:
             # Load from environment or config
             # Initialize platform manager
 
-            try:
-                self.platform_managers[platform] = get_platform_manager(platform, client_config)
-                #self.platform_managers[platform] = manager
-                self.logger.debug(f"Initialized manager for platform: {platform}")
-            except Exception as e:
-                self.logger.error(f"Failed to initialize manager for {platform}: {str(e)}")
-                raise e
+            platform_manager = get_platform_manager(platform, client_config)
+            if platform_manager:
+                self.platform_managers[platform] = platform_manager
+            self.logger.debug(f"Initialized manager for platform: {platform}")
 
     def add_platform_db(self, platform: str, db_config: DBConfig):
         with self.main_db.get_session() as session:
@@ -184,47 +181,29 @@ class PlatformOrchestrator:
 T = TypeVar('T', bound=PlatformManager)
 
 
-# Register platform-specific managers
-
-
-def get_platform_manager(platform: str, client_config: ClientConfig) -> PlatformManager:
-    if platform == "tiktok":
-        try:
-            # from src.platform_mgmt.tiktok_manager import TikTokManager
-            from src.clients.instances.tiktok_client import TikTokClient
-            return PlatformManager(TikTokClient, client_config)
-        except ModuleNotFoundError as err:
-            print(err)
-            print("You might want to run `uv sync --extra tiktok'")
-    print(f"Platform '{platform}' not supported")
-
-def get_platforms(platforms: set[str]) -> dict[str, T]:
-    platform_managers: dict[str, T] = {}
-
-    for platform in platforms:
-        if platform == "tiktok":
+def get_platform_manager(platform: str, client_config: ClientConfig) -> Optional[PlatformManager]:
+    match platform:
+        case "tiktok":
             try:
-                # from src.platform_mgmt.tiktok_manager import TikTokManager
                 from src.clients.instances.tiktok_client import TikTokClient
-                platform_managers[platform] = PlatformManager(TikTokClient)
+                return PlatformManager(platform, TikTokClient, client_config)
             except ModuleNotFoundError as err:
                 print(err)
                 print("You might want to run `uv sync --extra tiktok'")
-        elif platform == "twitter":
+        case "twitter":
             try:
-                from src.platform_mgmt.twitter_manager import TwitterManager
-                platform_managers[platform] = TwitterManager
+                from src.clients.instances.twitter_client import TwitterClient
+                return PlatformManager(platform, TwitterClient, client_config)
             except ModuleNotFoundError as err:
                 print(err)
                 print("You might want to run `uv sync --extra twitter'")
-        elif platform == "youtube":
+        case "youtube":
             try:
-                from src.platform_mgmt.youtube_manager import YoutubeManager
-                platform_managers[platform] = YoutubeManager
+                from src.clients.instances.youtube_client import YoutubeClient
+                return PlatformManager(platform, YoutubeClient, client_config)
             except ModuleNotFoundError as err:
                 print(err)
                 print("You might want to run `uv sync --extra youtube'")
-        else:
-            print(f"unknown platform: {platform}")
-
-    return platform_managers
+        case _:
+            print(f"Platform '{platform}' not supported")
+            return None

@@ -17,13 +17,6 @@ dependencies = [
     "typer>=0.15.2",
 ]
 
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-packages = ["src"]
-
 [project.optional-dependencies]
 youtube = [
     "google-api-python-client>=2.166.0",
@@ -35,10 +28,6 @@ youtube = [
 twitter = [
     "twscrape>=0.17.0",
 ]
-tiktok = [
-    "tiktok-research-api-python",
-]
-
 
 tiktok = [
     "tiktok-research-api-python",

@@ -29,12 +29,13 @@ class PlatformManager:
     Each platform should implement its own subclass of PlatformManager.
     """
 
-    def __init__(self, client_class, client_config: ClientConfig):
+    def __init__(self, platform_name, client_class, client_config: ClientConfig):
+        self.platform_name = platform_name
         self.client = client_class(client_config, self)
 
         # Initialize platform database
         client_config.db_config.test_mode = BIG5_CONFIG.test_mode
-        self.platform_db = PlatformDB(self.platform_name(), client_config.db_config)
+        self.platform_db = PlatformDB(self.platform_name, client_config.db_config)
         self.client.manager = self
         self._active_tasks: list[ClientTaskConfig] = []
         self._client_setup = False
@@ -69,7 +70,7 @@ class PlatformManager:
                 return self.current_quota_halt
             else:  # remove quota halt
                 self.current_quota_halt = None
-                remove_quota(self.platform_name())
+                remove_quota(self.platform_name)
 
     async def send_result(self, result: CollectionResult):
         try:
@@ -136,7 +137,7 @@ class PlatformManager:
                     print("Quota exceeded")
                     self.current_quota_halt = collection.blocked_until
                     self.platform_db.update_task_status(task.id, CollectionStatus.PAUSED)
-                    store_quota(self.platform_name(), self.current_quota_halt)
+                    store_quota(self.platform_name, self.current_quota_halt)
             return collection
 
         except Exception as e:
@@ -146,10 +147,6 @@ class PlatformManager:
     def pause_running_tasks(self):
         self.platform_db.pause_running_tasks()
 
-
-    @abstractmethod
-    def platform_name(self) -> str:
-        ...
 
     @staticmethod
     def platform_tables() -> list[str]:

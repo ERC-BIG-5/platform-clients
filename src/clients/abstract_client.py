@@ -125,7 +125,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
 
     @property
     def platform_name(self) -> str:
-        return self.manager.platform_name()
+        return self.manager.platform_name
 
     def raw_post_data_conversion(self, data: dict) -> PostEntry:
         raise NotImplementedError("This method should be implemented in the client")
