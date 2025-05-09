@@ -50,8 +50,11 @@ class PlatformManager(Generic[T_Client], ABC):
         """Set up the client if not already set up"""
         if not self._client_setup and self.client:
             # logger.info(f"Setting up client for platform: {self.platform_name}")
-            self.client.setup()
-            self._client_setup = True
+            try:
+                self.client.setup()
+                self._client_setup = True
+            except Exception as e:
+                print(e)
 
     def add_task(self, task: ClientTaskConfig, task_group: ClientTaskGroupConfig) -> bool:
         """Add a new collection task"""

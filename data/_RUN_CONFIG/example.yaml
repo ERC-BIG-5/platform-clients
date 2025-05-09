@@ -6,12 +6,20 @@ clients:
       create: true
       require_existing_parent_dir: false
       db_connection:
-        db_path: "youtube/youtube.sqlite"
-  twitter:
-    progress: true
-    request_delay: 0
-    db_config:
-      create: true
-      require_existing_parent_dir: false
-      db_connection:
-        db_path: "twitter/twitter.sqlite"
+        db_path: "youtube.sqlite"
+#  tiktok:
+#    progress: true
+#    request_delay: 0
+#    db_config:
+#      create: true
+#      require_existing_parent_dir: false
+#      db_connection:
+#        db_path: "tiktok.sqlite"
+#  twitter:
+#    progress: true
+#    request_delay: 0
+#    db_config:
+#      create: true
+#      require_existing_parent_dir: false
+#      db_connection:
+#        db_path: "twitter.sqlite"

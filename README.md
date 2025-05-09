@@ -14,15 +14,14 @@ uv sync
 2.
 install optional dependencies based on the platform you want to use
 uv sync -e <platform>
-uv sync -e youtube
-uv sync -e twitter
+for now there is youtube, twitter, tiktok
 
 copy template.env and name the new file: .env
 
 and comment in the lines for the platforms you want to use.
 
 3.
-run `typer src/main.py run init`
+run `typer main.py run init`
 
 
 ## Running commands

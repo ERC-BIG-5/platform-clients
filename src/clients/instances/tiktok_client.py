@@ -4,7 +4,7 @@ from typing import Optional, Literal, Any, TypedDict, TYPE_CHECKING
 
 from pydantic import SecretStr, Field, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from tiktok_research_api import TikTokResearchAPI, Criteria, QueryVideoRequest, Query
+from tiktok_research_api_python import TikTokResearchAPI, Criteria, QueryVideoRequest, Query
 
 from databases.db_models import DBUser, DBPost
 from databases.external import ClientConfig, ClientTaskConfig, CollectConfig
