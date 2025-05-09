@@ -12,9 +12,8 @@ uv sync
 
 2.
 install optional dependencies based on the platform you want to use
-uv sync -e <platform> e.g.
-`uv sync -e youtube`
-`uv sync -e twitter`
+uv sync -e <platform>
+for now there is youtube, twitter, tiktok
 
 copy template.env and name the new file: .env
 

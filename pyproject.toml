@@ -1,3 +1,10 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["src"]
+
 [project]
 name = "platform-clients"
 version = "0.9.0"
@@ -28,6 +35,10 @@ youtube = [
 twitter = [
     "twscrape>=0.17.0",
 ]
+tiktok = [
+    "tiktok-research-api-python",
+]
+
 
 tiktok = [
     "tiktok-research-api-python",
