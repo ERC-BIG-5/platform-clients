@@ -15,7 +15,6 @@ from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TAS
 from src.misc.platform_quotas import load_quotas
 from src.platform_manager import PlatformManager
 
-
 from tools.project_logging import get_logger
 
 
@@ -59,19 +58,17 @@ class PlatformOrchestrator:
 
         registered_platforms = self._get_registered_platforms()
 
-        platform_managers: dict[str, PlatformManager] = get_platforms(set(config.clients))
-
         for platform in config.clients:
             if platform not in [p.platform for p in registered_platforms]:
                 self.add_platform_db(platform, config.clients[platform].db_config)
 
+            """
             manager_class = platform_managers.get(platform)
             if not manager_class:
                 self.logger.error(
-                    f"No manager implementation found for platform: '{platform}'. "
-                    f"Add it to the platform_orchestration.py file: 'PLATFORM_MANAGERS'")
+                    f"No manager implementation found for platform: '{platform}'.")
                 continue
-
+            """
             client_config = ClientConfig.model_validate(
                 RUN_CONFIG["clients"][platform])
 
@@ -87,8 +84,8 @@ class PlatformOrchestrator:
             # Initialize platform manager
 
             try:
-                manager = manager_class(client_config)
-                self.platform_managers[platform] = manager
+                self.platform_managers[platform] = get_platform_manager(platform, client_config)
+                #self.platform_managers[platform] = manager
                 self.logger.debug(f"Initialized manager for platform: {platform}")
             except Exception as e:
                 self.logger.error(f"Failed to initialize manager for {platform}: {str(e)}")
@@ -185,34 +182,48 @@ class PlatformOrchestrator:
 
 
 T = TypeVar('T', bound=PlatformManager)
+
+
 # Register platform-specific managers
 
 
-def get_platforms(platforms: set[str]) -> dict[str, T]:
+def get_platform_manager(platform: str, client_config: ClientConfig) -> PlatformManager:
+    if platform == "tiktok":
+        try:
+            # from src.platform_mgmt.tiktok_manager import TikTokManager
+            from src.clients.instances.tiktok_client import TikTokClient
+            return PlatformManager(TikTokClient, client_config)
+        except ModuleNotFoundError as err:
+            print(err)
+            print("You might want to run `uv sync --extra tiktok'")
+    print(f"Platform '{platform}' not supported")
 
+def get_platforms(platforms: set[str]) -> dict[str, T]:
     platform_managers: dict[str, T] = {}
 
     for platform in platforms:
         if platform == "tiktok":
             try:
-                from src.platform_mgmt.tiktok_manager import TikTokManager
-                platform_managers[platform] = TikTokManager
-            except ModuleNotFoundError:
-                pass
+                # from src.platform_mgmt.tiktok_manager import TikTokManager
+                from src.clients.instances.tiktok_client import TikTokClient
+                platform_managers[platform] = PlatformManager(TikTokClient)
+            except ModuleNotFoundError as err:
+                print(err)
+                print("You might want to run `uv sync --extra tiktok'")
         elif platform == "twitter":
             try:
                 from src.platform_mgmt.twitter_manager import TwitterManager
                 platform_managers[platform] = TwitterManager
             except ModuleNotFoundError as err:
                 print(err)
-                print("You might want to run `uv sync --extra twitter")
+                print("You might want to run `uv sync --extra twitter'")
         elif platform == "youtube":
             try:
                 from src.platform_mgmt.youtube_manager import YoutubeManager
                 platform_managers[platform] = YoutubeManager
             except ModuleNotFoundError as err:
                 print(err)
-                print("You might want to run `uv sync --extra youtube")
+                print("You might want to run `uv sync --extra youtube'")
         else:
             print(f"unknown platform: {platform}")
 

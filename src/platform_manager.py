@@ -19,7 +19,7 @@ from tools.project_logging import get_logger
 T_Client = TypeVar('T_Client', bound=AbstractClient)
 
 
-class PlatformManager(Generic[T_Client], ABC):
+class PlatformManager:
     """
     Base class for managing platform-specific operations including:
     - Client management
@@ -29,8 +29,8 @@ class PlatformManager(Generic[T_Client], ABC):
     Each platform should implement its own subclass of PlatformManager.
     """
 
-    def __init__(self, client_config: ClientConfig):
-        self.client = self._create_client(client_config)
+    def __init__(self, client_class, client_config: ClientConfig):
+        self.client = client_class(client_config, self)
 
         # Initialize platform database
         client_config.db_config.test_mode = BIG5_CONFIG.test_mode
@@ -44,7 +44,7 @@ class PlatformManager(Generic[T_Client], ABC):
     @abstractmethod
     def _create_client(self, config: ClientConfig) -> T_Client:
         """Create platform-specific client instance"""
-        pass
+        return self.client
 
     def _setup_client(self):
         """Set up the client if not already set up"""

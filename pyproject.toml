@@ -22,11 +22,17 @@ youtube = [
     "google-api-python-client>=2.166.0",
     "more-itertools>=10.6.0",
     "pyrfc3339>=2.0.1",
+    "more-itertools>=10.5.0",
 ]
 
 twitter = [
     "twscrape>=0.17.0",
 ]
 
+tiktok = [
+    "tiktok-research-api-python",
+]
+
 [tool.uv.sources]
 big5-databases = { git = "https://github.com/ERC-BIG-5/databases" }
+tiktok-research-api-python = { git = "https://github.com/transfluxus/tiktok-research-api-python" }
