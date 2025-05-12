@@ -1,10 +1,3 @@
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-packages = ["src"]
-
 [project]
 name = "platform-clients"
 version = "0.9.0"
@@ -23,6 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["src"]
+
 
 [project.optional-dependencies]
 youtube = [
