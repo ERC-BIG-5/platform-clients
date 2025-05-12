@@ -1,6 +1,6 @@
 from databases.external import ClientConfig
 from src.clients.instances.tiktok_client import TikTokClient
-from src.platform_manager import PlatformManager, T_Client
+from src.platform_manager import PlatformManager
 
 
 class TikTokManager(PlatformManager[TikTokClient]):

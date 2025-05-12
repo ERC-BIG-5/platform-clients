@@ -36,6 +36,7 @@ class PlatformManager:
         # Initialize platform database
         client_config.db_config.test_mode = BIG5_CONFIG.test_mode
         self.platform_db = PlatformDB(self.platform_name, client_config.db_config)
+        # todo: test if this is needed
         self.client.manager = self
         self._active_tasks: list[ClientTaskConfig] = []
         self._client_setup = False
