@@ -1,3 +1,13 @@
+"""
+Tiktok API docs
+https://developers.tiktok.com/doc/research-api-specs-query-videos?enter_method=left_navigation
+
+https://developers.tiktok.com/doc/overview
+
+Tiktok does some random pagination, that's why the actual results might exceed the limit by a bit.
+
+
+"""
 from datetime import datetime, timezone
 from json import JSONDecodeError
 from typing import Optional, Literal, Any, TypedDict, TYPE_CHECKING
@@ -10,10 +20,10 @@ from databases.db_models import DBUser, DBPost
 from databases.external import ClientConfig, ClientTaskConfig, CollectConfig
 from src.clients.abstract_client import AbstractClient, CollectionException, QuotaExceeded
 from src.const import ENV_FILE_PATH
+from src.platform_manager import PlatformManager
 from tools.project_logging import get_logger
 
-if TYPE_CHECKING:
-    from src.platform_mgmt.tiktok_manager import TikTokManager
+logger = get_logger(__file__)
 
 
 class TikTokPISetting(BaseSettings):
@@ -22,6 +32,23 @@ class TikTokPISetting(BaseSettings):
     RATE_LIMIT: int = 3
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
 
+
+ALL_COUNTRY_CODES = ['FR', 'TH', 'MM', 'BD', 'IT', 'NP', 'IQ', 'BR', 'US', 'KW', 'VN', 'AR', 'KZ', 'GB', 'UA', 'TR',
+                     'ID', 'PK', 'NG', 'KH', 'PH', 'EG', 'QA', 'MY', 'ES', 'JO', 'MA', 'SA', 'TW', 'AF', 'EC', 'MX',
+                     'BW', 'JP', 'LT', 'TN', 'RO', 'LY', 'IL', 'DZ', 'CG', 'GH', 'DE', 'BJ', 'SN', 'SK', 'BY', 'NL',
+                     'LA', 'BE', 'DO', 'TZ', 'LK', 'NI', 'LB', 'IE', 'RS', 'HU', 'PT', 'GP', 'CM', 'HN', 'FI', 'GA',
+                     'BN', 'SG', 'BO', 'GM', 'BG', 'SD', 'TT', 'OM', 'FO', 'MZ', 'ML', 'UG', 'RE', 'PY', 'GT', 'CI',
+                     'SR', 'AO', 'AZ', 'LR', 'CD', 'HR', 'SV', 'MV', 'GY', 'BH', 'TG', 'SL', 'MK', 'KE', 'MT', 'MG',
+                     'MR', 'PA', 'IS', 'LU', 'HT', 'TM', 'ZM', 'CR', 'NO', 'AL', 'ET', 'GW', 'AU', 'KR', 'UY', 'JM',
+                     'DK', 'AE', 'MD', 'SE', 'MU', 'SO', 'CO', 'AT', 'GR', 'UZ', 'CL', 'GE', 'PL', 'CA', 'CZ', 'ZA',
+                     'AI', 'VE', 'KG', 'PE', 'CH', 'LV', 'PR', 'NZ', 'TL', 'BT', 'MN', 'FJ', 'SZ', 'VU', 'BF', 'TJ',
+                     'BA', 'AM', 'TD', 'SI', 'CY', 'MW', 'EE', 'XK', 'ME', 'KY', 'YE', 'LS', 'ZW', 'MC', 'GN', 'BS',
+                     'PF', 'NA', 'VI', 'BB', 'BZ', 'CW', 'PS', 'FM', 'PG', 'BI', 'AD', 'TV', 'GL', 'KM', 'AW', 'TC',
+                     'CV', 'MO', 'VC', 'NE', 'WS', 'MP', 'DJ', 'RW', 'AG', 'GI', 'GQ', 'AS', 'AX', 'TO', 'KN', 'LC',
+                     'NC', 'LI', 'SS', 'IR', 'SY', 'IM', 'SC', 'VG', 'SB', 'DM', 'KI', 'UM', 'SX', 'GD', 'MH', 'BQ',
+                     'YT', 'ST', 'CF', 'BM', 'SM', 'PW', 'GU', 'HK', 'IN', 'CK', 'AQ', 'WF', 'JE', 'MQ', 'CN', 'GF',
+                     'MS', 'GG', 'TK', 'FK', 'PM', 'NU', 'MF', 'ER', 'NF', 'VA', 'IO', 'SH', 'BL', 'CU', 'NR', 'TP',
+                     'BV', 'EH', 'PN', 'TF', 'RU']
 
 EU_COUNTRY_CODES = [
     'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI',
@@ -69,7 +96,10 @@ class QueryModel(BaseModel):
 
     def to_query(self) -> Query:
         if not self.and_ and not self.or_ and not self.not_:
-            self.and_.append(CriteriaModel(operation="IN", field_values=EU_COUNTRY_CODES, field_name="region_code"))
+            self.and_.append(CriteriaModel(operation="IN", field_values=["SHORT", "MID", "LONG", "EXTRA_LONG"],
+                                           field_name="video_length"))
+            # self.and_.append(CriteriaModel(operation="IN", field_values=EU_COUNTRY_CODES, field_name="region_code"))
+            logger.info(f"Adding default query with all video durations")
         return Query(
             and_criteria=[criteria.to_criteria() for criteria in self.and_],
             or_criteria=[criteria.to_criteria() for criteria in self.or_],
@@ -119,10 +149,9 @@ class UserProfile(BaseModel):
 
 class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfile]):
 
-    def __init__(self, config: ClientConfig, manager: "TikTokManager"):
+    def __init__(self, config: ClientConfig, manager: PlatformManager):
         super().__init__(config, manager)
         self.client: Optional[TikTokResearchAPI] = None
-        self.logger = get_logger(__file__)
 
     def setup(self):
         self.settings = TikTokPISetting()
@@ -141,15 +170,8 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
             end_date = datetime.fromisoformat(abstract_config.to_time).date()
             end_date_s = end_date.strftime("%Y%m%d")
 
-        # keyword <- abstract_config.query
-        if not abstract_config.query:
-            abstract_config.query = {"and_": [{
-                "field_name": "region_code", "field_values": EU_COUNTRY_CODES, "operation": "in"
-            }]}
 
-        # print(abstract_config.model_dump())
-
-        query = QueryModel.model_validate(abstract_config.query)
+        query = QueryModel.model_validate(abstract_config.query or {})
         if hasattr(abstract_config, "is_random"):
             is_random = getattr(abstract_config, "is_random")
         else:
