@@ -170,7 +170,6 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
             end_date = datetime.fromisoformat(abstract_config.to_time).date()
             end_date_s = end_date.strftime("%Y%m%d")
 
-
         query = QueryModel.model_validate(abstract_config.query or {})
         if hasattr(abstract_config, "is_random"):
             is_random = getattr(abstract_config, "is_random")
@@ -189,7 +188,7 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
 
     async def collect(self, collection_config: CollectConfig) -> list[QueryVideoResult]:
         config = self.transform_config(collection_config)
-
+        logger.debug(f"{(collection_config.from_time, collection_config.to_time)} ->{(config.start_date, config.end_date)}")
         all_videos = []
         while True:
             try:
@@ -204,6 +203,7 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
                     raise QuotaExceeded.next_day(exc)
                 print(exc)
                 raise CollectionException(orig_exception=exc)
+            logger.debug([f"{datetime.fromtimestamp(v["create_time"]).date():%Y-%m-%d}" for v in videos])
             all_videos.extend([
                 self.raw_post_data_conversion(v) for v in videos])
             if len(all_videos) >= config.max_total:

@@ -17,10 +17,8 @@ from databases.db_models import DBPost, DBUser
 from databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
 from src.clients.abstract_client import AbstractClient, UserEntry, QuotaExceeded
 from src.const import ENV_FILE_PATH, CLIENTS_DATA_PATH
+from src.platform_manager import PlatformManager
 from tools.project_logging import get_logger
-
-if TYPE_CHECKING:
-    from src.platform_mgmt.youtube_manager import YoutubeManager
 
 
 class GoogleAPIKeySetting(BaseSettings):
@@ -259,7 +257,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
     DEFAULT_PART_OPTIONS = ["contentDetails", "status", "statistics", "topicDetails", "recordingDetails", "suggestions",
                             "localizations"]
 
-    def __init__(self, config: ClientConfig, manager: "YoutubeManager"):
+    def __init__(self, config: ClientConfig, manager: PlatformManager):
         super().__init__(config, manager)
         self.client: YoutubeResource = None
         self.logger = get_logger(__name__)
