@@ -35,6 +35,7 @@ class TwitterSearchParameters(BaseSettings):
     from_time: Optional[datetime] = None
     to_time: Optional[datetime] = None
     limit: int = 100
+    geocode: Optional[str]
 
     def build_query(self) -> str:
         """Build the Twitter search query string"""
@@ -49,7 +50,8 @@ class TwitterSearchParameters(BaseSettings):
             q += f" since:{self.from_time.strftime('%Y-%m-%d_%H:%M:%S_UTC')}"
         if self.to_time:
             q += f" until:{self.to_time.strftime('%Y-%m-%d_%H:%M:%S_UTC')}"
-
+        if self.geocode:
+            q += f" geocode:{self.geocode}"
         return q
 
 
@@ -72,14 +74,7 @@ class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
 
     def setup(self):
         """Initialize the Twitter API client with authentication"""
-        if self.config and self.config.auth_config:
-            env = BaseEnvSettings()
-            self.settings = TwitterAuthSettings.model_validate({
-                k: env.model_extra[v] for k, v in self.config.auth_config.items()
-            })
-        else:
-            self.settings = TwitterAuthSettings()
-
+        self.settings = TwitterAuthSettings()
         self.api = API()  # or API("path-to.db") for custom DB path
 
     async def initialize_auth(self):

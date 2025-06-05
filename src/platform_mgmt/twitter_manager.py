@@ -32,9 +32,6 @@ class TwitterManager(PlatformManager[TwitterClient]):
 
     def _create_client(self, config: ClientConfig) -> TwitterClient:
         """Create and configure Twitter client"""
-        if config and config.auth_config and not all(k in config.auth_config for k in
-                                                     ['TWITTER_API_KEY', 'TWITTER_API_SECRET']):
-            raise ValueError("Twitter client requires TWITTER_API_KEY and TWITTER_API_SECRET in auth_config")
         return TwitterClient(config, self)
 
     def _check_rate_limit(self):

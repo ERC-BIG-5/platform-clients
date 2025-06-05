@@ -1,5 +1,6 @@
 import asyncio
 from asyncio import Task
+from collections import defaultdict
 from pathlib import Path
 from typing import Type, Optional, TypeVar
 
@@ -7,9 +8,9 @@ from sqlalchemy import exists
 
 from databases.db_mgmt import DatabaseManager
 from databases.db_models import DBPlatformDatabase
-from databases.external import DBConfig, ClientConfig
+from databases.external import DBConfig, ClientConfig, ClientTaskConfig
 from databases.model_conversion import PlatformDatabaseModel
-from src.clients.clients_models import RunConfig
+from src.clients.clients_models import RunConfig, ClientTaskGroupConfig
 from src.clients.task_groups import load_tasks
 from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config, BASE_DATA_PATH
 from src.misc.platform_quotas import load_quotas
@@ -122,9 +123,6 @@ class PlatformOrchestrator:
         check for json file in the specific folder and add them into the sdb
         :return: returns a list of task names
         """
-        added_tasks: list[str] = []
-        missing_platform_managers: set[str] = set()
-
         files = []
         if not task_dir:
             task_dir = CLIENTS_TASKS_PATH
@@ -133,36 +131,61 @@ class PlatformOrchestrator:
         if task_dir.is_dir():
             files = task_dir.glob("*.json")
 
+        added_tasks = []
         for file in files:
             # create collection_task models
-            task_group, tasks = load_tasks(file)
-            all_added = True
-            for task in tasks:
-                if task.platform in missing_platform_managers:
-                    continue
-                if task.platform not in self.platform_managers:
-                    self.logger.warning(f"No manager found for platform: {task.platform}")
-                    all_added = False
-                    missing_platform_managers.add(task.platform)
-                    continue
+            added_tasks.extend(self.handle_task_file(file))
+        return added_tasks
+    
+    def handle_task_file(self, file: Path) -> list[str]:
+        tasks, task_group = load_tasks(file)
+        added_tasks, all_added = self.process_tasks(tasks, task_group)
 
-                manager = self.platform_managers[task.platform]
-                # TODO VERY INEFFICIENT ADDING ONE TASK AT A TIME
-                if manager.add_task(task, task_group):
-                    added_tasks.append(task.task_name)
-                    # Register platform database in main DB
-                    self.add_platform_db(task.platform, manager.platform_db.db_config.connection_str)
-                else:
-                    all_added = False
+        if all_added and BIG5_CONFIG.moved_processed_tasks:
+            file.rename(PROCESSED_TASKS_PATH / file.name)
 
-            # todo only move added tasks?
-            if all_added and BIG5_CONFIG.moved_processed_tasks:
-                file.rename(PROCESSED_TASKS_PATH / file.name)
-            # else:
-            #    self.logger.warning(f"task of file exists already: {file.name}")
         self.logger.info(f"new tasks: # {len(added_tasks)}")
         self.logger.debug(f"new tasks: # {[t for t in added_tasks]}")
         return added_tasks
+
+
+    def process_tasks(self,
+                      tasks: list[ClientTaskConfig],
+                      task_group: Optional[ClientTaskGroupConfig] = None) -> tuple[list[str], bool]:
+        """
+
+        @return: list of task names and if all tasks were added
+        """
+        added_tasks: list[str] = []
+        missing_platform_managers: set[str] = set()
+
+        all_added = True
+        grouped_by_platform = defaultdict(list)
+
+        for task in tasks:
+            if task.platform in missing_platform_managers:
+                all_added = False
+                continue
+            if task.platform not in self.platform_managers:
+                self.logger.warning(f"No manager found for platform: {task.platform}")
+                all_added = False
+                missing_platform_managers.add(task.platform)
+                continue
+
+            grouped_by_platform[task.platform].append(task)
+
+        for group, g_tasks in grouped_by_platform.items():
+            manager = self.platform_managers[group]
+            added_tasks_names = manager.add_tasks(g_tasks)
+            added_tasks.extend(added_tasks_names)
+            if len(g_tasks) != len(added_tasks_names):
+                self.logger.warning(f"Not all tasks added for platform: {task.platform}, {len(added_tasks_names)}/{len(g_tasks)}")
+                # Register platform database in main DB
+                #self.add_platform_db(task.platform, manager.platform_db.db_config.connection_str)
+                all_added = False
+
+        return added_tasks, all_added
+
 
     def fix_tasks(self):
         """

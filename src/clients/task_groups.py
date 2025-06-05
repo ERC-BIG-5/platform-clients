@@ -87,7 +87,7 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
     return None, concrete_configs
 
 
-def load_tasks(task_path: Path) -> tuple[Optional[ClientTaskGroupConfig], list[ClientTaskConfig]]:
+def load_tasks(task_path: Path) -> tuple[list[ClientTaskConfig], Optional[ClientTaskGroupConfig]]:
     """
     Load a validate a task file
     :param task_path: absolute or relative path (to CLIENTS_TASKS_PATH)
@@ -103,11 +103,11 @@ def load_tasks(task_path: Path) -> tuple[Optional[ClientTaskGroupConfig], list[C
             task = ClientTaskConfig.model_validate(task_data)
             task.source_file = task_path
             parsed_tasks.append(task)
-        return None, parsed_tasks  # TODO TEMP
+        return parsed_tasks, None
     try:
         task = ClientTaskConfig.model_validate(data)
         task.source_file = task_path
-        return None, [task]
+        return [task], None
     except ValidationError as v_err:
         ct_cfg_err = v_err
 
@@ -116,10 +116,10 @@ def load_tasks(task_path: Path) -> tuple[Optional[ClientTaskGroupConfig], list[C
         task_group_conf, tasks = generate_configs(ctg)
         for t in tasks:
             t.source_file = task_path
-        return task_group_conf, tasks
+        return tasks, task_group_conf
     except ValidationError as v_err:
         print(ct_cfg_err)
         print("****")
         print(v_err)
         logger.error("Task file cannot be parsed neither as TaskConfig nor as TaskGroupConfig")
-        return None, []
+        return [], None

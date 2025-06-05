@@ -5,14 +5,16 @@ store it in a database.
 
 # Installation
 
-git clone <this_repo>
+git clone https://github.com/ERC-BIG-5/platform-clients.git
 
 1. 
-uv sync
+`uv sync`
 
 2.
 install optional dependencies based on the platform you want to use
-uv sync -e <platform>
+
+`uv sync -extra <platform>`
+
 for now there is youtube, twitter, tiktok
 
 copy template.env and name the new file: .env

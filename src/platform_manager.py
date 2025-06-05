@@ -62,6 +62,9 @@ class PlatformManager:
         """Add a new collection task"""
         return self.platform_db.add_db_collection_task(task)
 
+    def add_tasks(self, tasks: list[ClientTaskConfig]) -> list[str]:
+        return self.platform_db.add_db_collection_tasks(tasks)
+
     def has_quota_halt(self) -> Optional[datetime]:
         """
         @returns: datetime if there is a halt, else None
