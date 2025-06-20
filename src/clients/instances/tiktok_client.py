@@ -16,8 +16,8 @@ from pydantic import SecretStr, Field, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from tiktok_research_api_python import TikTokResearchAPI, Criteria, QueryVideoRequest, Query
 
-from databases.db_models import DBUser, DBPost
-from databases.external import ClientConfig, ClientTaskConfig, CollectConfig
+from  big5_databases.databases.db_models import DBUser, DBPost
+from  big5_databases.databases.external import ClientConfig, ClientTaskConfig, CollectConfig
 from src.clients.abstract_client import AbstractClient, CollectionException, QuotaExceeded
 from src.const import ENV_FILE_PATH
 from src.platform_manager import PlatformManager

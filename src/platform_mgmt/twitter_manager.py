@@ -2,8 +2,8 @@ from datetime import datetime
 
 import time
 
-from databases.db_models import DBPost
-from databases.external import CollectionStatus, ClientTaskConfig, ClientConfig
+from big5_databases.databases.db_models import DBPost
+from big5_databases.databases.external import CollectionStatus, ClientTaskConfig, ClientConfig
 from src.clients.instances.twitter_client import TwitterClient
 from src.platform_manager import PlatformManager
 from tools.project_logging import get_logger

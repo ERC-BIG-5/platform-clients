@@ -13,8 +13,8 @@ from googleapiclient.errors import HttpError
 from pydantic import SecretStr, BaseModel, Field, field_validator, field_serializer
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from databases.db_models import DBPost, DBUser
-from databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
+from big5_databases.databases.db_models import DBPost, DBUser
+from big5_databases.databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
 from src.clients.abstract_client import AbstractClient, UserEntry, QuotaExceeded
 from src.const import ENV_FILE_PATH, CLIENTS_DATA_PATH
 from src.platform_manager import PlatformManager

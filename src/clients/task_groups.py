@@ -6,7 +6,7 @@ from typing import Optional
 import itertools
 from pydantic_core._pydantic_core import ValidationError
 
-from databases.external import ClientTaskConfig
+from big5_databases.databases.external import ClientTaskConfig
 from src.clients.clients_models import TimeConfig, ClientTaskGroupConfig
 from src.const import CLIENTS_TASKS_PATH
 from tools.files import read_data, get_abs_path

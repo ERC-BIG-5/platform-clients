@@ -3,9 +3,9 @@ from typing import Optional
 from sqlalchemy import ScalarResult
 from sqlalchemy import select, BinaryExpression, func
 
-from databases.db_mgmt import DatabaseManager
-from databases.db_models import DBPost
-from databases.external import DBConfig
+from big5_databases.databases.db_mgmt import DatabaseManager
+from big5_databases.databases.db_models import DBPost
+from big5_databases.databases.external import DBConfig
 
 
 # conf = DatabaseConfig("sqlite", (BASE_DATA_PATH / "twitter.sqlite").as_posix())

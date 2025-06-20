@@ -1,3 +1,4 @@
+import enum
 from abc import ABC, abstractmethod
 from asyncio import sleep, CancelledError
 from datetime import datetime
@@ -6,18 +7,22 @@ from typing import Generic, TypeVar, Optional
 
 import httpx
 
-from databases.db_models import CollectionResult
-from databases.external import CollectionStatus, ClientTaskConfig, ClientConfig
-from databases.platform_db_mgmt import PlatformDB
+from big5_databases.databases.db_models import CollectionResult
+from big5_databases.databases.external import CollectionStatus, ClientTaskConfig, ClientConfig
+from big5_databases.databases.platform_db_mgmt import PlatformDB
 from src.clients.abstract_client import AbstractClient, PostEntry, CollectionException, \
     QuotaExceeded
 from src.clients.clients_models import ClientTaskGroupConfig
 from src.const import BIG5_CONFIG
-from src.misc.platform_quotas import store_quota, remove_quota
+from src.misc import platform_quotas
+from src.misc.platform_quotas import store_quota, remove_quota, load_quotas
 from tools.project_logging import get_logger
 
 T_Client = TypeVar('T_Client', bound=AbstractClient)
 
+class PlatformStatus(enum.Enum):
+    idle = enum.auto()
+    running = enum.auto()
 
 class PlatformManager:
     """
@@ -42,6 +47,7 @@ class PlatformManager:
         self._client_setup = False
         self.logger = get_logger(__name__)
         self.current_quota_halt: Optional[datetime] = None
+        self.status: PlatformStatus = PlatformStatus.idle
 
     @abstractmethod
     def _create_client(self, config: ClientConfig) -> T_Client:
@@ -87,27 +93,37 @@ class PlatformManager:
 
     async def process_all_tasks(self):
         """Process all pending tasks"""
-        tasks = self.platform_db.get_pending_tasks()
-        self.logger.info(f"Task queue: {len(tasks)}")
         self._setup_client()
-        for idx, task in enumerate(tasks):
-            if (halt_until := self.has_quota_halt()):
-                print(f"quota halt. not continuing tasks {halt_until:%Y.%m.%d - %H:%M}")
+        while True:
+            self.status = PlatformStatus.running
+            self.current_quota_halt = load_quotas().get(self.platform_name)
+            if halt_until := self.has_quota_halt():
+                self.logger.info(
+                    f"Progress for platform: '{self.platform_name}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
                 break
-            self.logger.debug(f"Processing task- platform:{task.platform}, id:{task.id}, {idx + 1}/{len(tasks)}")
-            collection_result = await self.process_task(task)
-
-            if BIG5_CONFIG.send_posts and isinstance(collection_result, CollectionResult):
-                await self.send_result(collection_result)
-
-            # if not tasks[-1] == task:
-            sleep_time = self.client.config.request_delay
-            sleep_time += randint(0, self.client.config.delay_randomize)
-            try:
-                await sleep(sleep_time)
-            except (KeyboardInterrupt, CancelledError):
-                print("closing...")
+            tasks = self.platform_db.get_pending_tasks()
+            self.logger.info(f"Task queue: {len(tasks)}")
+            if not tasks:
                 break
+            for idx, task in enumerate(tasks):
+                if (halt_until := self.has_quota_halt()):
+                    print(f"quota halt. not continuing tasks {halt_until:%Y.%m.%d - %H:%M}")
+                    break
+                self.logger.debug(f"Processing task- platform:{task.platform}, id:{task.id}, {idx + 1}/{len(tasks)}")
+                collection_result = await self.process_task(task)
+
+                if BIG5_CONFIG.send_posts and isinstance(collection_result, CollectionResult):
+                    await self.send_result(collection_result)
+
+                # if not tasks[-1] == task:
+                sleep_time = self.client.config.request_delay
+                sleep_time += randint(0, self.client.config.delay_randomize)
+                try:
+                    await sleep(sleep_time)
+                except (KeyboardInterrupt, CancelledError):
+                    print("closing...")
+                    break
+        self.status = PlatformStatus.idle
 
     async def process_task(self, task: ClientTaskConfig) -> CollectionResult | CollectionException:
         """Execute a single collection task"""

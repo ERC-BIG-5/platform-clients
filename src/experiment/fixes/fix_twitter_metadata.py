@@ -1,9 +1,9 @@
 from typing import Iterable
 
 import sqlalchemy
-from databases.db_mgmt import DatabaseManager
-from databases.db_models import DBPost
-from databases.external import DBConfig, BASE_DATA_PATH, SQliteConnection
+from big5_databases.databases.db_mgmt import DatabaseManager
+from big5_databases.databases.db_models import DBPost
+from big5_databases.databases.external import DBConfig, BASE_DATA_PATH, SQliteConnection
 from sqlalchemy.orm.attributes import flag_modified
 
 def main():

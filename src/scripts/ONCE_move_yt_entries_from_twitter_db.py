@@ -3,9 +3,9 @@ from typing import Optional, Any, Type
 
 from sqlalchemy import select, BinaryExpression, func
 
-from databases.db_mgmt import DatabaseManager
-from databases.db_models import Base, DBPost, DBCollectionTask
-from databases.external import DBConfig
+from big5_databases.databases.db_mgmt import DatabaseManager
+from big5_databases.databases.db_models import Base, DBPost, DBCollectionTask
+from big5_databases.databases.external import DBConfig
 from src.const import BASE_DATA_PATH
 
 conf = DBConfig("sqlite", (BASE_DATA_PATH / "twitter.sqlite").as_posix())

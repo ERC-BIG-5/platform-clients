@@ -1,7 +1,7 @@
 import enum
 import json
 from pydantic import BaseModel
-from databases.external import BASE_DATA_PATH, PostgresConnection, SQliteConnection, DBConfig, ClientTaskConfig, \
+from big5_databases.databases.external import BASE_DATA_PATH, PostgresConnection, SQliteConnection, DBConfig, ClientTaskConfig, \
     ClientConfig, CollectConfig, CollectionStatus
 from src.clients.clients_models import ClientTaskGroupConfig, TimeConfig
 

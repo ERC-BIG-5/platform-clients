@@ -5,7 +5,7 @@ from typing import Optional, Any
 from pydantic import BaseModel, Field, field_validator, model_validator, ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from databases.external import ClientConfig
+from big5_databases.databases.external import ClientConfig
 from src.const import ENV_FILE_PATH
 
 

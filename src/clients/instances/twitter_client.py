@@ -10,8 +10,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from twscrape import API
 from twscrape.api import API as TwitterAPI
 
-from databases.db_models import DBPost, DBUser
-from databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
+from big5_databases.databases.db_models import DBPost, DBUser
+from big5_databases.databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
 from src.clients.abstract_client import AbstractClient, UserEntry
 from src.clients.clients_models import BaseEnvSettings
 from src.const import ENV_FILE_PATH
@@ -35,7 +35,7 @@ class TwitterSearchParameters(BaseSettings):
     from_time: Optional[datetime] = None
     to_time: Optional[datetime] = None
     limit: int = 100
-    geocode: Optional[str]
+    geocode: Optional[str] = None
 
     def build_query(self) -> str:
         """Build the Twitter search query string"""

@@ -6,15 +6,15 @@ from typing import Type, Optional, TypeVar
 
 from sqlalchemy import exists
 
-from databases.db_mgmt import DatabaseManager
-from databases.db_models import DBPlatformDatabase
-from databases.external import DBConfig, ClientConfig, ClientTaskConfig
-from databases.model_conversion import PlatformDatabaseModel
+from big5_databases.databases.db_mgmt import DatabaseManager
+from big5_databases.databases.db_models import DBPlatformDatabase
+from big5_databases.databases.external import DBConfig, ClientConfig, ClientTaskConfig
+from big5_databases.databases.model_conversion import PlatformDatabaseModel
 from src.clients.clients_models import RunConfig, ClientTaskGroupConfig
 from src.clients.task_groups import load_tasks
 from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config, BASE_DATA_PATH
 from src.misc.platform_quotas import load_quotas
-from src.platform_manager import PlatformManager
+from src.platform_manager import PlatformManager, PlatformStatus
 
 from tools.project_logging import get_logger
 
@@ -101,17 +101,11 @@ class PlatformOrchestrator:
         """Progress tasks for specified platforms or all platforms"""
         # Create tasks for each platform
         # platform_tasks = []
-        platform_quotas = load_quotas()
         for platform, manager in self.platform_managers.items():
             if platforms and platform not in platforms:
                 continue
             if not self.run_config.clients[platform].progress:
                 self.logger.info(f"Progress for platform: '{platform}' deactivated")
-                continue
-            manager.current_quota_halt = platform_quotas.get(platform)
-            if halt_until := manager.has_quota_halt():
-                self.logger.info(
-                    f"Progress for platform: '{platform}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
                 continue
             coro_task = asyncio.create_task(manager.process_all_tasks())
             self.current_tasks.append(coro_task)
@@ -147,7 +141,6 @@ class PlatformOrchestrator:
         self.logger.info(f"new tasks: # {len(added_tasks)}")
         self.logger.debug(f"new tasks: # {[t for t in added_tasks]}")
         return added_tasks
-
 
     def process_tasks(self,
                       tasks: list[ClientTaskConfig],
@@ -200,6 +193,8 @@ class PlatformOrchestrator:
             # self.platform_managers.items()
             # task.platform
 
+    def get_status(self) -> dict[str, str]:
+        return {p_n: platform.status.name for p_n, platform in self.platform_managers.items()}
 
 T = TypeVar('T', bound=PlatformManager)
 

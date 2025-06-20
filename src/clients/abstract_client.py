@@ -4,8 +4,8 @@ from typing import TypeVar, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from databases.db_models import CollectionResult, DBPost, DBUser
-from databases.external import ClientTaskConfig, CollectConfig, ClientConfig
+from big5_databases.databases.db_models import CollectionResult, DBPost, DBUser
+from big5_databases.databases.external import ClientTaskConfig, CollectConfig, ClientConfig
 from tools.project_logging import get_logger
 
 if TYPE_CHECKING:

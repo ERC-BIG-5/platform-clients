@@ -4,9 +4,9 @@ from typing import Optional
 import pandas as pd
 from sqlalchemy import select, func
 
-from databases.db_mgmt import DatabaseManager
-from databases.db_models import DBPost
-from databases.external import DBConfig
+from big5_databases.databases.db_mgmt import DatabaseManager
+from big5_databases.databases.db_models import DBPost
+from big5_databases.databases.external import DBConfig
 from src.const import BASE_DATA_PATH
 
 # todo. we have to use platform specific databases

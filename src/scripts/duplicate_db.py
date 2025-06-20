@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from databases.db_mgmt import DatabaseManager
-from databases.db_models import DBCollectionTask, DBPost
-from databases.external import DBConfig, SQliteConnection
+from big5_databases.databases.db_mgmt import DatabaseManager
+from big5_databases.databases.db_models import DBCollectionTask, DBPost
+from big5_databases.databases.external import DBConfig, SQliteConnection
 from src.const import BASE_DATA_PATH
 from sqlalchemy import select
 

@@ -10,14 +10,14 @@ from rich import print
 from rich.console import Console
 from rich.table import Table
 
-from databases import db_utils
-from databases.c_db_merge import merge_database
-from databases.db_merge import DBMerger
-from databases.db_mgmt import DatabaseManager
-from databases.db_stats import generate_db_stats
-from databases.db_utils import reset_task_states, check_platforms, count_posts
-from databases.external import CollectionStatus, DBConfig, SQliteConnection, DBStats
-from databases.meta_database import add_db, MetaDatabase
+from big5_databases.databases import db_utils
+from big5_databases.databases.c_db_merge import merge_database
+from big5_databases.databases.db_merge import DBMerger
+from big5_databases.databases.db_mgmt import DatabaseManager
+from big5_databases.databases.db_stats import generate_db_stats
+from big5_databases.databases.db_utils import reset_task_states, check_platforms, count_posts
+from big5_databases.databases.external import CollectionStatus, DBConfig, SQliteConnection, DBStats
+from big5_databases.databases.meta_database import add_db, MetaDatabase
 from src.const import BASE_DATA_PATH
 from src.platform_orchestration import PlatformOrchestrator
 from tools.env_root import root
@@ -195,3 +195,4 @@ def collect():
 if __name__ == '__main__':
     collect()
     # db_stats(store=False)
+    #db_stats()
