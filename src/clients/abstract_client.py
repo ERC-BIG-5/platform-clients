@@ -15,6 +15,8 @@ TClientConfig = TypeVar("TClientConfig", bound=BaseModel)
 PostEntry = TypeVar("PostEntry")
 UserEntry = TypeVar("UserEntry")
 
+SerializableCollectionConfig = TypeVar("SerializableCollectionConfig", bound=BaseModel)
+
 
 class CollectionException(Exception):
     orig_exception: Exception
@@ -57,75 +59,95 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         """
         pass
 
+    @staticmethod
     @abstractmethod
-    def transform_config(self, abstract_config: CollectConfig) -> TClientConfig:
+    def transform_config(abstract_config: CollectConfig) -> TClientConfig:
         """
-        transform the generic configuration into a platform specific configuration
+        transform the generic configuration into a platform-specific configuration
         :param abstract_config:
-        :return:
+        :return: A (model/class) the client uses
         """
-        pass
 
-    async def execute_task(self, task: ClientTaskConfig) -> CollectionResult | CollectionException:
-        start_time = datetime.now()
-        try:
-            collected_items = await self.collect(
-                task.collection_config
-            )
-            posts: list[DBPost] = []
-            users: set[DBUser] = set()
-            # Process results
-            for item in collected_items:
-                posts.append(self.create_post_entry(item, task))
-                users.add(self.create_user_entry(item))
+    pass
 
-            return CollectionResult(
-                posts=posts,
-                added_posts=[],
-                users=list(users),
-                task=task,
-                collected_items=len(collected_items),
-                duration=int((datetime.now() - start_time).total_seconds() * 1000)  # millis
-            )
-        except CollectionException as e:
-            return e
-
+    @staticmethod
     @abstractmethod
-    async def collect(self, collection_config: CollectConfig) -> list[PostEntry]:
+    def transform_config_to_serializable(abstract_config: CollectConfig) -> SerializableCollectionConfig:
         """
-        Make a specific collection (step of a task). This function should use
-        the client API
-        :param collect_settings:
-        :param generic_config:
-        :return:
+        transform the generic configuration into a platform-specific serializable configuration
         """
-        pass
+    pass
 
-    def default_post_data(self, task: ClientTaskConfig):
-        """
-        TODO Try this method. this is in order to reduce some boilerplate in
-        the create_post_entry function.
-        :param task:
-        :return:
-        """
-        return {
-            "platform": self.platform_name,
-            "date_collected": datetime.now(),
-            "collection_task_id": task.id,
-            # "collection_step": task.steps_done + 1
-        }
 
-    @abstractmethod
-    def create_post_entry(self, post: PostEntry, task: ClientTaskConfig) -> DBPost:
-        pass
+async def execute_task(self, task: ClientTaskConfig) -> CollectionResult | CollectionException:
+    start_time = datetime.now()
+    try:
+        collected_items = await self.collect(
+            task.collection_config
+        )
+        posts: list[DBPost] = []
+        users: set[DBUser] = set()
+        # Process results
+        for item in collected_items:
+            posts.append(self.create_post_entry(item, task))
+            users.add(self.create_user_entry(item))
 
-    @abstractmethod
-    def create_user_entry(self, user: UserEntry) -> DBUser:
-        pass
+        return CollectionResult(
+            posts=posts,
+            added_posts=[],
+            users=list(users),
+            task=task,
+            collected_items=len(collected_items),
+            duration=int((datetime.now() - start_time).total_seconds() * 1000)  # millis
+        )
+    except CollectionException as e:
+        return e
 
-    @property
-    def platform_name(self) -> str:
-        return self.manager.platform_name
 
-    def raw_post_data_conversion(self, data: dict) -> PostEntry:
-        raise NotImplementedError("This method should be implemented in the client")
+@abstractmethod
+async def collect(self, collection_config: CollectConfig) -> list[PostEntry]:
+    """
+    Make a specific collection (step of a task). This function should use
+    the client API
+    :param collect_settings:
+    :param generic_config:
+    :return:
+    """
+    pass
+
+
+def default_post_data(self, task: ClientTaskConfig):
+    """
+    TODO Try this method. this is in order to reduce some boilerplate in
+    the create_post_entry function.
+    :param task:
+    :return:
+    """
+    return {
+        "platform": self.platform_name,
+        "date_collected": datetime.now(),
+        "collection_task_id": task.id,
+        # "collection_step": task.steps_done + 1
+    }
+
+
+@abstractmethod
+def create_post_entry(self, post: PostEntry, task: ClientTaskConfig) -> DBPost:
+    pass
+
+
+@abstractmethod
+def create_user_entry(self, user: UserEntry) -> DBUser:
+    pass
+
+
+@property
+def platform_name(self) -> str:
+    return self.manager.platform_name
+
+
+def raw_post_data_conversion(self, data: dict) -> PostEntry:
+    raise NotImplementedError("This method should be implemented in the client")
+
+
+ConcreteClientClass = TypeVar('ConcreteClientClass', bound=AbstractClient)

@@ -265,31 +265,34 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         self.path_config = YoutubePathConfig(pn=CLIENTS_DATA_PATH / self.platform_name)
 
     def setup(self):
-        # if self.config and self.config.auth_config:
-        #     ## todo generalize this and move it somewhere else
-        #     env = BaseEnvSettings()
-        #     self.settings = GoogleAPIKeySetting.model_validate({k: env.model_extra[v]
-        #                                                         for k, v in self.config.auth_config.items()})
-        # else:
         self.settings = GoogleAPIKeySetting()
         self.client = build('youtube', 'v3', developerKey=self.settings.GOOGLE_API_KEYS.get_secret_value())
 
-    def transform_config(self, abstract_config: CollectConfig) -> YoutubeSearchParameters:
-        return YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
+    @staticmethod
+    def transform_config(abstract_config: CollectConfig) -> YoutubeSearchParameters:
+        abstract_config.relevanceLanguage = abstract_config.language
+        abstract_config.q = abstract_config.query
+        abstract_config.maxResults = abstract_config.limit
+        yt_config = YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
+        return yt_config
+
+    @staticmethod
+    def transform_config_to_serializable(abstract_config: CollectConfig) -> YoutubeSearchParameters:
+        return YoutubeClient.transform_config(abstract_config)
 
     @classmethod
     def static_transform_config(clz, abstract_config: CollectConfig) -> YoutubeSearchParameters:
         return YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
 
     async def collect(self, generic_config: CollectConfig) -> list[dict]:
-
         # ,contentDetails,statistics,status,topicDetails,recordingDetails,localizations",
         config = self.transform_config(generic_config)
-        part = getattr(config, "part")
+
         search_result_items = []
         pages = 0
 
         # rename in config to limit. we are always using 50 or lower, depending if there is a limit
+        part = getattr(config, "part")
         delattr(config, "part")
         config.part = "id,snippet"
         # todo, this needs testing!
@@ -298,7 +301,6 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
             parts.remove("snippet")
             part = ",".join(parts)
 
-        # has_more_pages = True
         while True:
             try:
                 # region-code is automatically set to user locatin (e.g. ES)
@@ -385,33 +387,33 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         pass
 
     # Function to download and convert a YouTube video to MP3 format using yt-dlp
-    def download_video_as_mp3(self, video_id) -> Path | None:
-        warnings.warn("this is not really the concern of the client anymore. but of the pipeline")
-        video_url = f"{YT_VID_URL_PRE}{video_id}"
-        dest_path = self.path_config.mp3s / f"{video_id}.mp3"
-        if dest_path.exists():
-            print(f"The file {dest_path} already exists. Skipping download...")
-            return dest_path  # If already exists, don't download again
-
-        try:
-            ydl_opts = {
-                'format': 'bestaudio/best',  # Download the best audio quality available
-                'outtmpl': dest_path.absolute().as_posix().rstrip(".mp3"),  # Save the file with a sanitized name
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',  # Convert the audio to MP3 format
-                    'preferredquality': '192',  # Set the MP3 quality
-                }],
-            }
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                print(f"Downloading video from URL: {video_url}")
-                ydl.download([video_url])  # Download the video and convert to MP3
-            if dest_path.exists():
-                print(f"Download and conversion successful: {dest_path}")
-                return dest_path  # Return the file path if it exists
-            else:
-                print(f"Error: The file {dest_path} was not found after download.")
-                return None
-        except Exception as e:
-            print(f"Error downloading {video_url}: {e}")
-            return None  # Return None if an error occurs
+    # def download_video_as_mp3(self, video_id) -> Path | None:
+    #     warnings.warn("this is not really the concern of the client anymore. but of the pipeline")
+    #     video_url = f"{YT_VID_URL_PRE}{video_id}"
+    #     dest_path = self.path_config.mp3s / f"{video_id}.mp3"
+    #     if dest_path.exists():
+    #         print(f"The file {dest_path} already exists. Skipping download...")
+    #         return dest_path  # If already exists, don't download again
+    #
+    #     try:
+    #         ydl_opts = {
+    #             'format': 'bestaudio/best',  # Download the best audio quality available
+    #             'outtmpl': dest_path.absolute().as_posix().rstrip(".mp3"),  # Save the file with a sanitized name
+    #             'postprocessors': [{
+    #                 'key': 'FFmpegExtractAudio',
+    #                 'preferredcodec': 'mp3',  # Convert the audio to MP3 format
+    #                 'preferredquality': '192',  # Set the MP3 quality
+    #             }],
+    #         }
+    #         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    #             print(f"Downloading video from URL: {video_url}")
+    #             ydl.download([video_url])  # Download the video and convert to MP3
+    #         if dest_path.exists():
+    #             print(f"Download and conversion successful: {dest_path}")
+    #             return dest_path  # Return the file path if it exists
+    #         else:
+    #             print(f"Error: The file {dest_path} was not found after download.")
+    #             return None
+    #     except Exception as e:
+    #         print(f"Error downloading {video_url}: {e}")
+    #         return None  # Return None if an error occurs

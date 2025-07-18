@@ -30,9 +30,8 @@ def generate_timestamps(time_config: TimeConfig) -> list[datetime]:
     return timestamps
 
 
-def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTaskGroupConfig], list[ClientTaskConfig]]:
+def generate_configs(config: ClientTaskGroupConfig) -> tuple[ClientTaskGroupConfig, list[ClientTaskConfig]]:
     """Generate all concrete configurations from the config file."""
-    # Load and parse config file
 
     # Generate all timestamps
     timestamps = generate_timestamps(config.time_config)
@@ -47,6 +46,11 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
     # Generate all concrete configs
     concrete_configs: list[ClientTaskConfig] = []
     task_no = 0
+
+    # use the first platform and create copies for each platform at the end
+    multiple_platforms = isinstance(config.platform, list)
+    base_platform = config.platform[0] if multiple_platforms else config.platform
+
     for timestamp in timestamps:
         for param_combination in param_permutations:
             # Start with static parameters
@@ -71,9 +75,9 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
             concrete_config = {
                 "task_name": f"{config.group_prefix}_{task_no}",
                 "collection_config": conf,
-                "platform": config.platform,
-                "database": config.database,
-                "transient": config.store_as_group,
+                "platform": base_platform,
+                # "database": config.database,
+                "transient": config.transient,
                 "test": config.test,
                 "overwrite": config.overwrite,
 
@@ -81,10 +85,16 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[Optional[ClientTask
             concrete_configs.append(ClientTaskConfig.model_validate(concrete_config))
             task_no += 1
 
-    if config.store_as_group:
-        return config, concrete_configs
+    if multiple_platforms:
+        # iterate through the other platforms
 
-    return None, concrete_configs
+        for platform in config.platform[1:]:
+            # iterate through the first set of configs and add copies with this platform to the list
+            for ct_idx in range(task_no):
+                new_ct = concrete_configs[ct_idx].model_copy(update={"platform": platform},deep=True)
+                concrete_configs.append(new_ct)
+
+    return config, concrete_configs
 
 
 def load_tasks(task_path: Path) -> tuple[list[ClientTaskConfig], Optional[ClientTaskGroupConfig]]:

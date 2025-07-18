@@ -31,7 +31,6 @@ class PlatformManager:
     - Database operations
     - Task queue management
 
-    Each platform should implement its own subclass of PlatformManager.
     """
 
     def __init__(self, platform_name, client_class, client_config: ClientConfig):
@@ -63,10 +62,6 @@ class PlatformManager:
                 self._client_setup = True
             except Exception as e:
                 print(e)
-
-    def add_task(self, task: ClientTaskConfig, task_group: ClientTaskGroupConfig) -> bool:
-        """Add a new collection task"""
-        return self.platform_db.add_db_collection_task(task)
 
     def add_tasks(self, tasks: list[ClientTaskConfig]) -> list[str]:
         return self.platform_db.add_db_collection_tasks(tasks)

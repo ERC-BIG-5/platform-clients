@@ -24,32 +24,33 @@ class TimeConfig(BaseModel):
 
 class ClientTaskGroupConfig(BaseModel):
     # one file, many tasks
-    platform: str
+    platform: str | list[str]
     group_prefix: str
-    id: Optional[int] = Field(None, init=False)
     time_config: TimeConfig
     static_params: dict[str, Any]  # Parameters that stay constant
     variable_params: dict[str, list[Any]] = Field(default_factory=dict)  # Parameters to permute
-    store_as_group: bool = False
-    database: Optional[str] = Field("")  # default the same as platform
+    # store_as_group: bool = False
+    id: Optional[int] = Field(None, init=False)
+    transient: Optional[bool] = False
+    # database: Optional[str] = Field("")  # default the same as platform # todo depr...
 
     test: bool = False
     overwrite: bool = False
     test_data: Optional[list[dict]] = None
 
     # todo. why is this not called?!
-    @field_validator("database", mode="before")
-    @classmethod
-    def set_database(cls, v, info: ValidationInfo) -> str:
-        if v is None:
-            return info.data["platform"]
-        return v
+    # @field_validator("database", mode="before")
+    # @classmethod
+    # def set_database(cls, v, info: ValidationInfo) -> str:
+    #     if v is None:
+    #         return info.data["platform"]
+    #     return v
 
-    @model_validator(mode="after")
-    def validate_model(cls, model: "ClientTaskGroupConfig"):
-        if not model.database:
-            model.database = model.platform
-        return model
+    # @model_validator(mode="after")
+    # def validate_model(cls, model: "ClientTaskGroupConfig"):
+    #     if not model.database:
+    #         model.database = model.platform
+    #     return model
 
 
 class BaseEnvSettings(BaseSettings):

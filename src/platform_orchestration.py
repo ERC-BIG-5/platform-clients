@@ -10,14 +10,14 @@ from big5_databases.databases.db_mgmt import DatabaseManager
 from big5_databases.databases.db_models import DBPlatformDatabase
 from big5_databases.databases.external import DBConfig, ClientConfig, ClientTaskConfig
 from big5_databases.databases.model_conversion import PlatformDatabaseModel
+from src.clients.abstract_client import ConcreteClientClass
 from src.clients.clients_models import RunConfig, ClientTaskGroupConfig
 from src.clients.task_groups import load_tasks
 from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config, BASE_DATA_PATH
-from src.misc.platform_quotas import load_quotas
-from src.platform_manager import PlatformManager, PlatformStatus
-
+from src.platform_manager import PlatformManager
 from tools.project_logging import get_logger
 
+logger = get_logger(__file__)
 
 class PlatformOrchestrator:
     """
@@ -32,15 +32,15 @@ class PlatformOrchestrator:
         return super().__new__(cls)
 
     def __init__(self):
-        self.logger = get_logger(__file__)
+        # self.logger = get_logger(__file__)
         if not self.__instance:
             self.platform_managers: dict[str, PlatformManager] = {}
             self.run_config = RunConfig.model_validate(read_run_config())
             try:
                 self.main_db = DatabaseManager.sqlite_db_from_path(BASE_DATA_PATH / "dbs/main.sqlite")
             except ValueError as e:
-                self.logger.error(e)
-                self.logger.error("Run command 'init' (typer src/main.py run init)")
+                logger.error(e)
+                logger.error("Run command 'init' (typer src/main.py run init)")
                 exit(1)
             self.logger = get_logger(__name__)
             self.initialize_platform_managers()
@@ -63,13 +63,6 @@ class PlatformOrchestrator:
             if platform not in [p.platform for p in registered_platforms]:
                 self.add_platform_db(platform, config.clients[platform].db_config)
 
-            """
-            manager_class = platform_managers.get(platform)
-            if not manager_class:
-                self.logger.error(
-                    f"No manager implementation found for platform: '{platform}'.")
-                continue
-            """
             client_config = ClientConfig.model_validate(
                 RUN_CONFIG["clients"][platform])
 
@@ -87,7 +80,7 @@ class PlatformOrchestrator:
             platform_manager = get_platform_manager(platform, client_config)
             if platform_manager:
                 self.platform_managers[platform] = platform_manager
-            self.logger.debug(f"Initialized manager for platform: {platform}")
+            logger.debug(f"Initialized manager for platform: {platform}")
 
     def add_platform_db(self, platform: str, db_config: DBConfig):
         with self.main_db.get_session() as session:
@@ -105,7 +98,7 @@ class PlatformOrchestrator:
             if platforms and platform not in platforms:
                 continue
             if not self.run_config.clients[platform].progress:
-                self.logger.info(f"Progress for platform: '{platform}' deactivated")
+                logger.info(f"Progress for platform: '{platform}' deactivated")
                 continue
             coro_task = asyncio.create_task(manager.process_all_tasks())
             self.current_tasks.append(coro_task)
@@ -138,8 +131,8 @@ class PlatformOrchestrator:
         if all_added and BIG5_CONFIG.moved_processed_tasks:
             file.rename(PROCESSED_TASKS_PATH / file.name)
 
-        self.logger.info(f"new tasks: # {len(added_tasks)}")
-        self.logger.debug(f"new tasks: # {[t for t in added_tasks]}")
+        logger.info(f"new tasks: # {len(added_tasks)}")
+        logger.debug(f"new tasks: # {[t for t in added_tasks]}")
         return added_tasks
 
     def process_tasks(self,
@@ -160,7 +153,7 @@ class PlatformOrchestrator:
                 all_added = False
                 continue
             if task.platform not in self.platform_managers:
-                self.logger.warning(f"No manager found for platform: {task.platform}")
+                logger.warning(f"No manager found for platform: {task.platform}")
                 all_added = False
                 missing_platform_managers.add(task.platform)
                 continue
@@ -172,7 +165,7 @@ class PlatformOrchestrator:
             added_tasks_names = manager.add_tasks(g_tasks)
             added_tasks.extend(added_tasks_names)
             if len(g_tasks) != len(added_tasks_names):
-                self.logger.warning(f"Not all tasks added for platform: {task.platform}, {len(added_tasks_names)}/{len(g_tasks)}")
+                logger.warning(f"Not all tasks added for platform: {task.platform}, {len(added_tasks_names)}/{len(g_tasks)}")
                 # Register platform database in main DB
                 #self.add_platform_db(task.platform, manager.platform_db.db_config.connection_str)
                 all_added = False
@@ -198,6 +191,33 @@ class PlatformOrchestrator:
 
 T = TypeVar('T', bound=PlatformManager)
 
+def get_client_class(platform: str) -> Optional[Type[ConcreteClientClass]]:
+    match platform:
+        case "tiktok":
+            try:
+                from src.clients.instances.tiktok_client import TikTokClient
+                return TikTokClient
+            except ModuleNotFoundError as err:
+                print(err)
+                print("You might want to run `uv sync --extra tiktok'")
+        case "twitter":
+            try:
+                from src.clients.instances.twitter_client import TwitterClient
+                return TwitterClient
+            except ModuleNotFoundError as err:
+                print(err)
+                print("You might want to run `uv sync --extra twitter'")
+        case "youtube":
+            try:
+                from src.clients.instances.youtube_client import YoutubeClient
+                return YoutubeClient
+            except ModuleNotFoundError as err:
+                print(err)
+                print("You might want to run `uv sync --extra youtube'")
+        case _:
+            print(f"Platform '{platform}' not supported")
+            return None
+
 
 def get_platform_manager(platform: str, client_config: ClientConfig) -> Optional[PlatformManager]:
     match platform:
@@ -220,6 +240,7 @@ def get_platform_manager(platform: str, client_config: ClientConfig) -> Optional
                 from src.clients.instances.youtube_client import YoutubeClient
                 return PlatformManager(platform, YoutubeClient, client_config)
             except ModuleNotFoundError as err:
+
                 print(err)
                 print("You might want to run `uv sync --extra youtube'")
         case _:

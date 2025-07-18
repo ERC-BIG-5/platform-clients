@@ -16,8 +16,8 @@ from pydantic import SecretStr, Field, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from tiktok_research_api_python import TikTokResearchAPI, Criteria, QueryVideoRequest, Query
 
-from  big5_databases.databases.db_models import DBUser, DBPost
-from  big5_databases.databases.external import ClientConfig, ClientTaskConfig, CollectConfig
+from big5_databases.databases.db_models import DBUser, DBPost
+from big5_databases.databases.external import ClientConfig, ClientTaskConfig, CollectConfig
 from src.clients.abstract_client import AbstractClient, CollectionException, QuotaExceeded
 from src.const import ENV_FILE_PATH
 from src.platform_manager import PlatformManager
@@ -75,6 +75,12 @@ VideoFields = Literal[
     "video_length"  # the length of the video in seconds
 ]
 
+"""
+following 3 are pydantic models
+QueryVideoRequestModel is only used so that transform_config_to_serializable 
+can produce something serializable
+"""
+
 
 class CriteriaModel(BaseModel):
     operation: Literal["EQ", "IN", "GT", "GTE", "LT", "LTE"]
@@ -105,6 +111,29 @@ class QueryModel(BaseModel):
             or_criteria=[criteria.to_criteria() for criteria in self.or_],
             not_criteria=[criteria.to_criteria() for criteria in self.not_]
         )
+
+
+class QueryVideoRequestModel(BaseModel):
+    query: QueryModel
+    start_date: str
+    end_date: str
+    max_count: Optional[int] = None
+    max_total: Optional[int] = None
+    cursor: Optional[int] = None  # private
+    is_random: Optional[bool] = False
+    search_id: Optional[Any] = None  # private
+    fields: list[str]
+
+
+class AbstractQueryConstrain(CollectConfig):
+    query: Optional[QueryModel] = None
+    from_time: str
+    to_time: str
+    fields: Optional[list[str]] = Field(default=PUBLIC_VIDEO_QUERY_FIELDS)
+    is_random: Optional[bool] = False
+
+    class Config:
+        from_attributes = True
 
 
 class QueryVideoResult(BaseModel):
@@ -147,7 +176,7 @@ class UserProfile(BaseModel):
     following_count: int
 
 
-class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfile]):
+class TikTokClient(AbstractClient[QueryVideoRequestModel, QueryVideoResult, UserProfile]):
 
     def __init__(self, config: ClientConfig, manager: PlatformManager):
         super().__init__(config, manager)
@@ -155,40 +184,57 @@ class TikTokClient(AbstractClient[QueryVideoRequest, QueryVideoResult, UserProfi
 
     def setup(self):
         self.settings = TikTokPISetting()
-        # print(self.settings.RATE_LIMIT)
         self.client = TikTokResearchAPI(self.settings.TIKTOK_CLIENT_KEY,
                                         self.settings.TIKTOK_CLIENT_SECRET.get_secret_value(),
                                         self.settings.RATE_LIMIT,
                                         retry_sleep_time=7)
-        # print(self.client.retry_sleep_time)
 
-    def transform_config(self, abstract_config: CollectConfig) -> QueryVideoRequest:
-        if abstract_config.from_time:
-            start_time = datetime.fromisoformat(abstract_config.from_time).date()
-            start_time_s = start_time.strftime("%Y%m%d")
-        if abstract_config.to_time:
-            end_date = datetime.fromisoformat(abstract_config.to_time).date()
-            end_date_s = end_date.strftime("%Y%m%d")
+    @staticmethod
+    def base_config_transform(abstract_config: CollectConfig) -> AbstractQueryConstrain:
+        # base validation
+        tiktok_general_config = AbstractQueryConstrain.model_validate(abstract_config)
 
-        query = QueryModel.model_validate(abstract_config.query or {})
-        if hasattr(abstract_config, "is_random"):
-            is_random = getattr(abstract_config, "is_random")
-        else:
-            is_random = False
+        def convert_time(time_s: str) -> str:
+            return datetime.fromisoformat(time_s).date().strftime("%Y%m%d")
 
-        if not hasattr(abstract_config, "fields"):
-            abstract_config.fields = PUBLIC_VIDEO_QUERY_FIELDS
-        return QueryVideoRequest(start_date=start_time_s,
-                                 query=query.to_query(),
-                                 end_date=end_date_s,
-                                 is_random=is_random,
-                                 fields=",".join(abstract_config.fields),
-                                 max_count=min(100, abstract_config.limit),
-                                 max_total=abstract_config.limit)
+        tiktok_general_config.from_time = convert_time(abstract_config.from_time)
+        tiktok_general_config.to_time = convert_time(abstract_config.to_time)
+
+        tiktok_general_config.query = QueryModel.model_validate(abstract_config.query or {})
+
+        if not hasattr(tiktok_general_config, "fields"):
+            tiktok_general_config.fields = list(PUBLIC_VIDEO_QUERY_FIELDS)
+        return tiktok_general_config
+
+    @staticmethod
+    def transform_config(abstract_config: CollectConfig) -> QueryVideoRequest:
+        # base validation
+        gen_conf = TikTokClient.base_config_transform(abstract_config)
+
+        client_model = QueryVideoRequest(start_date=gen_conf.from_time,
+                                         query=gen_conf.query.to_query(),
+                                         end_date=gen_conf.to_time,
+                                         is_random=gen_conf.is_random,
+                                         fields=",".join(gen_conf.fields),
+                                         max_count=min(100, gen_conf.limit),
+                                         max_total=gen_conf.limit)
+        return client_model
+
+    @staticmethod
+    def transform_config_to_serializable(abstract_config: CollectConfig) -> QueryVideoRequestModel:
+        gen_conf = TikTokClient.base_config_transform(abstract_config)
+        return QueryVideoRequestModel(start_date=gen_conf.from_time,
+                                      query=gen_conf.query,
+                                      end_date=gen_conf.to_time,
+                                      is_random=gen_conf.is_random,
+                                      fields=gen_conf.fields,
+                                      max_count=min(100, abstract_config.limit),
+                                      max_total=abstract_config.limit)
 
     async def collect(self, collection_config: CollectConfig) -> list[QueryVideoResult]:
-        config = self.transform_config(collection_config)
-        logger.debug(f"{(collection_config.from_time, collection_config.to_time)} ->{(config.start_date, config.end_date)}")
+        config: QueryVideoRequest = self.transform_config(collection_config)
+        logger.debug(
+            f"{(collection_config.from_time, collection_config.to_time)} ->{(config.start_date, config.end_date)}")
         all_videos = []
         while True:
             try:

@@ -5,8 +5,11 @@ description = "Platform clients package for social media data collection"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "big5-databases",
+    "big5-databases[all]",
     "httpx>=0.28.1",
+    "orjson>=3.11.0",
+    "pydantic-settings>=2.10.1",
+    "sqlalchemy>=2.0.41",
     "typer>=0.15.2",
 ]
 

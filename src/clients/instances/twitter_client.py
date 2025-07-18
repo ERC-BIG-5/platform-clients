@@ -4,8 +4,7 @@ from datetime import datetime
 from typing import Optional, Protocol, TYPE_CHECKING
 
 import orjson
-from pydantic import Field
-from pydantic import SecretStr
+from pydantic import Field, BaseModel, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from twscrape import API
 from twscrape.api import API as TwitterAPI
@@ -13,8 +12,8 @@ from twscrape.api import API as TwitterAPI
 from big5_databases.databases.db_models import DBPost, DBUser
 from big5_databases.databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
 from src.clients.abstract_client import AbstractClient, UserEntry
-from src.clients.clients_models import BaseEnvSettings
 from src.const import ENV_FILE_PATH
+from tools.pydantic_annotated_types import SerializableDatetimeAlways
 
 if TYPE_CHECKING:
     from src.platform_mgmt.twitter_manager import TwitterManager
@@ -27,13 +26,13 @@ class TwitterAuthSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
 
 
-class TwitterSearchParameters(BaseSettings):
-    query: str
+class TwitterSearchParameters(BaseModel):
+    query: Optional[str] = Field(default="")
     lang: str = "en"
     filter_replies: bool = True
     filter_quotes: bool = True
-    from_time: Optional[datetime] = None
-    to_time: Optional[datetime] = None
+    from_time: Optional[SerializableDatetimeAlways] = None
+    to_time: Optional[SerializableDatetimeAlways] = None
     limit: int = 100
     geocode: Optional[str] = None
 
@@ -106,9 +105,15 @@ class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
         # todo, bring back?
         # await self.api.pool.login_all()
 
-    def transform_config(self, abstract_config: CollectConfig) -> TwitterSearchParameters:
+    @staticmethod
+    def transform_config(abstract_config: CollectConfig) -> TwitterSearchParameters:
         """Transform generic config to Twitter-specific parameters"""
-        return TwitterSearchParameters.model_validate(abstract_config, from_attributes=True)
+        model = TwitterSearchParameters.model_validate(abstract_config, from_attributes=True)
+        return model
+
+    @staticmethod
+    def transform_config_to_serializable(abstract_config: CollectConfig) -> TwitterSearchParameters:
+        return TwitterClient.transform_config(abstract_config)
 
     async def collect(self, generic_config: CollectConfig) -> list[dict]:
         """Collect tweets based on search parameters"""

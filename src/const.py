@@ -43,3 +43,5 @@ RUN_CONFIG = read_data(BASE_DATA_PATH / "_RUN_CONFIG" / BIG5_CONFIG.run_config_f
 
 def read_run_config() -> dict:
     return read_data(BASE_DATA_PATH / "_RUN_CONFIG" / BIG5_CONFIG.run_config_file_name)
+
+ALL_PLATFORMS = ["twitter","youtube", "tiktok"]
