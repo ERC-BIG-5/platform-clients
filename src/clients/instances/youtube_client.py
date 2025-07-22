@@ -224,19 +224,19 @@ PostDict: TypeAlias = dict
 UserDict: TypeAlias = dict
 
 
-class YoutubePathConfig(BaseModel):
-    pn: Path
-    mp3s: Path = Field("mp3s", description="Where downloaded mp3s go")
-
-    """
-    @model_validator(mode="after")
-    def validate_paths(self, paths: dict[str, Path]):
-        print(paths)
-        return paths
-    """
-
-    def get_path(self, v: str) -> Path:
-        return getattr(self, v)
+# class YoutubePathConfig(BaseModel):
+#     pn: Path
+#     mp3s: Path = Field("mp3s", description="Where downloaded mp3s go")
+#
+#     """
+#     @model_validator(mode="after")
+#     def validate_paths(self, paths: dict[str, Path]):
+#         print(paths)
+#         return paths
+#     """
+#
+#     def get_path(self, v: str) -> Path:
+#         return getattr(self, v)
 
 
 class YoutubeResource(Protocol):
@@ -262,7 +262,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         self.client: YoutubeResource = None
         self.logger = get_logger(__name__)
         # todo this can go, since the datapipeline is taking care of downloads
-        self.path_config = YoutubePathConfig(pn=CLIENTS_DATA_PATH / self.platform_name)
+        # self.path_config = YoutubePathConfig(pn=CLIENTS_DATA_PATH / self.)
 
     def setup(self):
         self.settings = GoogleAPIKeySetting()

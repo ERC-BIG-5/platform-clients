@@ -1,7 +1,8 @@
 import logging
+import time
 from contextlib import aclosing
 from datetime import datetime
-from typing import Optional, Protocol, TYPE_CHECKING
+from typing import Optional, Protocol
 
 import orjson
 from pydantic import Field, BaseModel, SecretStr
@@ -11,12 +12,10 @@ from twscrape.api import API as TwitterAPI
 
 from big5_databases.databases.db_models import DBPost, DBUser
 from big5_databases.databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
-from src.clients.abstract_client import AbstractClient, UserEntry
+from src.clients.abstract_client import AbstractClient
 from src.const import ENV_FILE_PATH
+from src.platform_manager import PlatformManager
 from tools.pydantic_annotated_types import SerializableDatetimeAlways
-
-if TYPE_CHECKING:
-    from src.platform_mgmt.twitter_manager import TwitterManager
 
 
 class TwitterAuthSettings(BaseSettings):
@@ -62,19 +61,33 @@ class TwitterResource(Protocol):
 
 class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
     """
-    Updated Twitter client implementation using twscrape library
+    Twitter client implementation using twscrape library with integrated management
     """
 
-    def __init__(self, config: ClientConfig, manager: "TwitterManager"):
+    def __init__(self, config: ClientConfig, manager: PlatformManager):
         super().__init__(config, manager)
         self.api: Optional[TwitterAPI] = None
         self.settings: Optional[TwitterAuthSettings] = None
+        # self.platform_db = platform_db
+
+        # Rate limiting attributes
+        self.rate_limit_window = 900  # 15 minutes in seconds
+        self.rate_limit_requests = 180  # Requests per window
+        self.request_timestamps: list[float] = []
+        self._accounts_initialized = False
+
         self.logger = logging.getLogger(__file__)
 
     def setup(self):
         """Initialize the Twitter API client with authentication"""
         self.settings = TwitterAuthSettings()
         self.api = API()  # or API("path-to.db") for custom DB path
+
+    async def _ensure_accounts_initialized(self):
+        """Initialize authentication with Twitter"""
+        if not self._accounts_initialized:
+            await self.initialize_auth()
+            self._accounts_initialized = True
 
     async def initialize_auth(self):
         """Initialize authentication with Twitter"""
@@ -101,9 +114,24 @@ class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
         if not client_user.active:
             await self.api.pool.login(client_user)
 
-        # Login all accounts in the pool
-        # todo, bring back?
-        # await self.api.pool.login_all()
+    def _check_rate_limit(self):
+        """Manage rate limiting for Twitter API"""
+        current_time = time.time()
+
+        # Remove timestamps older than the window
+        self.request_timestamps = [ts for ts in self.request_timestamps
+                                   if current_time - ts < self.rate_limit_window]
+
+        # If we're at the limit, wait until we can make another request
+        if len(self.request_timestamps) >= self.rate_limit_requests:
+            sleep_time = self.request_timestamps[0] + self.rate_limit_window - current_time
+            if sleep_time > 0:
+                self.logger.info(f"Rate limit reached, waiting {sleep_time:.2f} seconds")
+                time.sleep(sleep_time)
+                self.request_timestamps.pop(0)
+
+        # Add current request timestamp
+        self.request_timestamps.append(current_time)
 
     @staticmethod
     def transform_config(abstract_config: CollectConfig) -> TwitterSearchParameters:
@@ -117,9 +145,14 @@ class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
 
     async def collect(self, generic_config: CollectConfig) -> list[dict]:
         """Collect tweets based on search parameters"""
+        await self._ensure_accounts_initialized()
+
+        if not self.api:
+            await self.initialize_auth()
+
+        self._check_rate_limit()
 
         config = self.transform_config(generic_config)
-
         tweets = []
         query = config.build_query()
 
@@ -131,18 +164,61 @@ class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
                         break
 
             self.logger.info(f"Collected {len(tweets)} tweets for query: {query}")
-            # todo, check here if we are not authenticated anymore.
-            # manager should be notified, so it can trigger trying to login again (even tho, the client is doing it)
-
             return tweets
 
         except Exception as e:
             self.logger.error(f"Error collecting tweets: {str(e)}")
             raise
 
+    # async def process_task(self, task: ClientTaskConfig) -> list[DBPost]:
+    #     """
+    #     Execute Twitter collection task with specific handling for:
+    #     - Rate limiting
+    #     - Tweet metadata collection
+    #     - User data collection
+    #     """
+    #     try:
+    #         if self.platform_db:
+    #             self.platform_db.update_task_status(task.id, CollectionStatus.RUNNING)
+    #         start_time = datetime.now()
+    #
+    #         # Execute collection
+    #         collected_items = await self.collect(task.collection_config)
+    #
+    #         # Process results and create entries
+    #         posts: list[DBPost] = []
+    #         users = set()  # Use set to avoid duplicate users
+    #
+    #         for item in collected_items:
+    #             # Create post-entry (tweet)
+    #             post = self.create_post_entry(item, task)
+    #             posts.append(post)
+    #
+    #             # Create user entry
+    #             if 'user_data' in item:
+    #                 user = self.create_user_entry(item['user_data'])
+    #                 users.add(user)
+    #
+    #         # Submit posts and users to database
+    #         if self.platform_db:
+    #             posts = self.platform_db.db_mgmt.safe_submit_posts(posts)
+    #             duration = (datetime.now() - start_time).total_seconds()
+    #             self.platform_db.db_mgmt.update_task(task.id,
+    #                                                  CollectionStatus.DONE,
+    #                                                  len(collected_items),
+    #                                                  len(posts),
+    #                                                  duration)
+    #
+    #         return posts
+    #
+    #     except Exception as e:
+    #         self.logger.error(f"Error executing Twitter task {task.task_name}: {str(e)}")
+    #         if self.platform_db:
+    #             self.platform_db.update_task_status(task.id, CollectionStatus.ABORTED)
+    #         raise e
+
     def create_post_entry(self, post: dict, task: ClientTaskConfig) -> DBPost:
         """Create a database post-entry from a tweet"""
-        # todo outsource the sanitazion hack with orjson and outsource
         return DBPost(
             platform="twitter",
             platform_id=str(post['id']),
@@ -154,9 +230,13 @@ class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
             collection_task_id=task.id
         )
 
-    def create_user_entry(self, user: UserEntry) -> DBUser:
+    def create_user_entry(self, user: dict) -> DBUser:
         """Create a database user entry from a Twitter user"""
         return DBUser(
             platform="twitter",
             platform_username=user.get('username')
         )
+
+    @property
+    def platform_name(self) -> str:
+        return "twitter"

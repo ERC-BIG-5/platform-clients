@@ -79,75 +79,75 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
     pass
 
 
-async def execute_task(self, task: ClientTaskConfig) -> CollectionResult | CollectionException:
-    start_time = datetime.now()
-    try:
-        collected_items = await self.collect(
-            task.collection_config
-        )
-        posts: list[DBPost] = []
-        users: set[DBUser] = set()
-        # Process results
-        for item in collected_items:
-            posts.append(self.create_post_entry(item, task))
-            users.add(self.create_user_entry(item))
+    async def execute_task(self, task: ClientTaskConfig) -> CollectionResult | CollectionException:
+        start_time = datetime.now()
+        try:
+            collected_items = await self.collect(
+                task.collection_config
+            )
+            posts: list[DBPost] = []
+            users: set[DBUser] = set()
+            # Process results
+            for item in collected_items:
+                posts.append(self.create_post_entry(item, task))
+                users.add(self.create_user_entry(item))
 
-        return CollectionResult(
-            posts=posts,
-            added_posts=[],
-            users=list(users),
-            task=task,
-            collected_items=len(collected_items),
-            duration=int((datetime.now() - start_time).total_seconds() * 1000)  # millis
-        )
-    except CollectionException as e:
-        return e
-
-
-@abstractmethod
-async def collect(self, collection_config: CollectConfig) -> list[PostEntry]:
-    """
-    Make a specific collection (step of a task). This function should use
-    the client API
-    :param collect_settings:
-    :param generic_config:
-    :return:
-    """
-    pass
+            return CollectionResult(
+                posts=posts,
+                added_posts=[],
+                users=list(users),
+                task=task,
+                collected_items=len(collected_items),
+                duration=int((datetime.now() - start_time).total_seconds() * 1000)  # millis
+            )
+        except CollectionException as e:
+            return e
 
 
-def default_post_data(self, task: ClientTaskConfig):
-    """
-    TODO Try this method. this is in order to reduce some boilerplate in
-    the create_post_entry function.
-    :param task:
-    :return:
-    """
-    return {
-        "platform": self.platform_name,
-        "date_collected": datetime.now(),
-        "collection_task_id": task.id,
-        # "collection_step": task.steps_done + 1
-    }
+    @abstractmethod
+    async def collect(self, collection_config: CollectConfig) -> list[PostEntry]:
+        """
+        Make a specific collection (step of a task). This function should use
+        the client API
+        :param collect_settings:
+        :param generic_config:
+        :return:
+        """
+        pass
 
 
-@abstractmethod
-def create_post_entry(self, post: PostEntry, task: ClientTaskConfig) -> DBPost:
-    pass
+    def default_post_data(self, task: ClientTaskConfig):
+        """
+        TODO Try this method. this is in order to reduce some boilerplate in
+        the create_post_entry function.
+        :param task:
+        :return:
+        """
+        return {
+            "platform": self.platform_name,
+            "date_collected": datetime.now(),
+            "collection_task_id": task.id,
+            # "collection_step": task.steps_done + 1
+        }
 
 
-@abstractmethod
-def create_user_entry(self, user: UserEntry) -> DBUser:
-    pass
+    @abstractmethod
+    def create_post_entry(self, post: PostEntry, task: ClientTaskConfig) -> DBPost:
+        pass
 
 
-@property
-def platform_name(self) -> str:
-    return self.manager.platform_name
+    @abstractmethod
+    def create_user_entry(self, user: UserEntry) -> DBUser:
+        pass
 
 
-def raw_post_data_conversion(self, data: dict) -> PostEntry:
-    raise NotImplementedError("This method should be implemented in the client")
+    @property
+    def platform_name(self) -> str:
+        return self.manager.platform_name
+
+
+    def raw_post_data_conversion(self, data: dict) -> PostEntry:
+        raise NotImplementedError("This method should be implemented in the client")
 
 
 ConcreteClientClass = TypeVar('ConcreteClientClass', bound=AbstractClient)
