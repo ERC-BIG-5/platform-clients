@@ -98,7 +98,8 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
                 users=list(users),
                 task=task,
                 collected_items=len(collected_items),
-                duration=int((datetime.now() - start_time).total_seconds() * 1000)  # millis
+                duration=int((datetime.now() - start_time).total_seconds() * 1000),  # millis
+                execution_ts= start_time
             )
         except CollectionException as e:
             return e

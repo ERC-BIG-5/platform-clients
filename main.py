@@ -3,23 +3,24 @@ import json
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Any
 
 import typer
 from rich import print
 from rich.console import Console
 from rich.table import Table
 
-from big5_databases.databases import db_utils
 from big5_databases.databases.c_db_merge import merge_database
 from big5_databases.databases.db_merge import DBMerger
 from big5_databases.databases.db_mgmt import DatabaseManager
 from big5_databases.databases.db_stats import generate_db_stats
-from big5_databases.databases.db_utils import reset_task_states, check_platforms, count_posts
+from big5_databases.databases.db_utils import reset_task_states
 from big5_databases.databases.external import CollectionStatus, DBConfig, SQliteConnection, DBStats
 from big5_databases.databases.meta_database import add_db, MetaDatabase
+from src.clients.task_parser import parse_task_data
 from src.const import BASE_DATA_PATH
 from src.platform_orchestration import PlatformOrchestrator
+from src.status import general_databases_status
 from tools.env_root import root
 from tools.project_logging import get_logger
 
@@ -34,47 +35,27 @@ class TimeWindow_(str, Enum):
     MONTH = "month"
     YEAR = "year"
 
+
 @app.command()
 def init():
     MetaDatabase(True)
 
+
+@app.command(short_help="Get the number of posts, and tasks statuses of all specified databases (RUN_CONFIG)")
+def database_names():
+    orchestrator = PlatformOrchestrator()
+    for platform, manager in orchestrator.platform_managers.items():
+        print(platform, manager.platform_db.db_config.connection_str)
+
+
 @app.command(short_help="Get the number of posts, and tasks statuses of all specified databases (RUN_CONFIG)")
 def status(task_status: bool = True,
            databases: Optional[
-                   Annotated[list[Path], typer.Option(help="Use this database instead of the RUN_CONFIG dbs")]] = None):
-    orchestrator = PlatformOrchestrator()
-
-    task_status_types = ["done", "init", "paused", "aborted"] if task_status else []
-    table = Table("platform", "total", "size", *task_status_types)
-
-    def calc_row(db: DatabaseManager, platform_: str) -> list[str | int]:
-        if task_status:
-            tasks = db_utils.count_states(db)
-            status_numbers = [str(tasks.get(t, 0)) for t in task_status_types]
-        else:
-            status_numbers = []
-        total_posts = str(count_posts(db=db))
-        size = str(f"{int(db_utils.file_size(db) / (1024 * 1024))} Mb")
-        return [platform_, total_posts, size] + status_numbers
-
-    # use a database
-    if databases:
-        for db_path in databases:
-            db = DatabaseManager.sqlite_db_from_path(db_path, create=False)
-            platforms = list(check_platforms(db))
-            if len(platforms) > 1:
-                raise ValueError("Database has more than one platform")
-            platform = platforms[0]
-
-            row = calc_row(db, platform)
-            table.add_row(*row)
-
-    # normal method. use databases as defined in RUN-CONFIG
-    else:
-        for platform, manager in orchestrator.platform_managers.items():
-            row = calc_row(manager.platform_db.db_mgmt, platform)
-            table.add_row(*row)
-
+               Annotated[list[Path], typer.Option(help="Use this database instead of the RUN_CONFIG dbs")]] = None):
+    results: list[dict[str, Any]] = general_databases_status(task_status, databases)
+    table = Table(*list(results[0].keys()))
+    for r in results:
+        table.add_row(*r.values())
     console.print(table)
 
 
@@ -174,15 +155,11 @@ def init_meta_database():
 
 
 @app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
-def collect():
+async def collect(run_forever: bool = True):
     orchestrator = None
     try:
         orchestrator = PlatformOrchestrator()
-        # Check for new tasks first
-        orchestrator.check_new_client_tasks()
-        orchestrator.fix_tasks()
-        # Progress all tasks
-        asyncio.run(orchestrator.progress_tasks(None))
+        await orchestrator.run_collect_loop()
     except KeyboardInterrupt:
         if orchestrator:
             asyncio.run(orchestrator.abort_tasks())
@@ -193,6 +170,38 @@ def collect():
 
 
 if __name__ == '__main__':
-    collect()
+    asyncio.run(collect())
+    pass
+    # database_names()
+    # asyncio.run(collect(run_forever=True))
+
     # db_stats(store=False)
-    #db_stats()
+    # status()
+    # status(databases=[Path("exp/youtube-exp.sqlite")])
+    # db_stats()
+
+    # res = parse_task_data({
+    #     "platform": "youtube",
+    #     "group_prefix": "2023_en_all_by_weeks",
+    #     "static_params": {
+    #         "limit": 2000,
+    #         "language": "en",
+    #         "part": [
+    #             "snippet",
+    #             "contentDetails",
+    #             "status",
+    #             "statistics",
+    #             "topicDetails",
+    #             "localizations"
+    #         ]
+    #     },
+    #     "time_config": {
+    #         "start": "2023-01-01T00:00:00Z",
+    #         "end": "2023-01-02T00:00:00Z",
+    #         "interval": {
+    #             "days": 1
+    #         }
+    #     }
+    # })
+    #
+    # print(res)

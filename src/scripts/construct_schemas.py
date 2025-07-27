@@ -1,7 +1,8 @@
 import enum
 import json
 from pydantic import BaseModel
-from big5_databases.databases.external import BASE_DATA_PATH, PostgresConnection, SQliteConnection, DBConfig, ClientTaskConfig, \
+from big5_databases.databases.external import BASE_DATA_PATH, PostgresConnection, SQliteConnection, DBConfig, \
+    ClientTaskConfig, \
     ClientConfig, CollectConfig, CollectionStatus
 from src.clients.clients_models import ClientTaskGroupConfig, TimeConfig
 
@@ -47,10 +48,13 @@ if __name__ == "__main__":
         {"$ref": "#/$defs/ClientTaskGroupConfig"},
         {
             "type": "array",
-            "items": {"$ref": "#/$defs/ClientTaskConfig"}
+            "items": {"AnyOf": [{"$ref": "#/$defs/ClientTaskConfig"},
+                                {"$ref": "#/$defs/ClientTaskGroupConfig"}]}
         }
     ]
 
     output_path = BASE_DATA_PATH / "schema/tasks.schema.json"
     json.dump(main_schema, output_path.open("w", encoding="utf-8"),
               indent=2, ensure_ascii=False)
+
+    print(output_path)

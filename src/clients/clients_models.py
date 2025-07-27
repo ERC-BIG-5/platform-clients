@@ -1,13 +1,11 @@
-from typing import Optional, Any
 
 from typing import Optional, Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator, ValidationInfo
+from pydantic import BaseModel, Field, RootModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from big5_databases.databases.external import ClientConfig
+from big5_databases.databases.external import ClientConfig, ClientTaskConfig
 from src.const import ENV_FILE_PATH
-
 
 
 class RunConfig(BaseModel):
@@ -62,3 +60,6 @@ class BaseEnvSettings(BaseSettings):
 
 class RunConfigModel(BaseModel):
     clients: dict[str, ClientConfig] = Field(default_factory=dict)
+
+
+all_task_schemas = RootModel[ClientTaskConfig | ClientTaskGroupConfig | list[ClientTaskConfig | ClientTaskGroupConfig]]

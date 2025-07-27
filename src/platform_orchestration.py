@@ -12,12 +12,13 @@ from big5_databases.databases.external import DBConfig, ClientConfig, ClientTask
 from big5_databases.databases.model_conversion import PlatformDatabaseModel
 from src.clients.abstract_client import ConcreteClientClass
 from src.clients.clients_models import RunConfig, ClientTaskGroupConfig
-from src.clients.task_groups import load_tasks
+from src.clients.task_parser import load_tasks_file
 from src.const import RUN_CONFIG, CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH, read_run_config, BASE_DATA_PATH
 from src.platform_manager import PlatformManager
 from tools.project_logging import get_logger
 
 logger = get_logger(__file__)
+
 
 class PlatformOrchestrator:
     """
@@ -45,7 +46,7 @@ class PlatformOrchestrator:
             self.logger = get_logger(__name__)
             self.initialize_platform_managers()
             self.__instance = self
-            self.current_tasks: list[Task] = []
+            self.current_tasks: list[tuple[str, Task]] = []  # platform_name, python async-task
 
     def _get_registered_platforms(self) -> list[PlatformDatabaseModel]:
         """Get all registered platforms from the main database"""
@@ -78,9 +79,10 @@ class PlatformOrchestrator:
             # Initialize platform manager
 
             platform_manager = get_platform_manager(platform, client_config)
+            platform_manager.active = self.run_config.clients[platform].progress
             if platform_manager:
                 self.platform_managers[platform] = platform_manager
-            logger.debug(f"Initialized manager for platform: {platform}")
+            logger.debug(f"Initialized manager for platform: {platform}; active: {platform_manager.active}")
 
     def add_platform_db(self, platform: str, db_config: DBConfig):
         with self.main_db.get_session() as session:
@@ -90,20 +92,29 @@ class PlatformOrchestrator:
                                            db_path=db_config.db_connection.db_path.as_posix(), is_default=True))
             session.commit()
 
-    async def progress_tasks(self, platforms: list[str] = None):
-        """Progress tasks for specified platforms or all platforms"""
+    async def progress_tasks(self, platforms: list[str] = None) -> dict[str, list[str]]:
+        """
+        Progress tasks for specified platforms or all platforms
+        returns {<platform_name>: [<task_name>, ...], ...}
+        """
         # Create tasks for each platform
-        # platform_tasks = []
         for platform, manager in self.platform_managers.items():
             if platforms and platform not in platforms:
                 continue
-            if not self.run_config.clients[platform].progress:
-                logger.info(f"Progress for platform: '{platform}' deactivated")
+            if not manager.active:
+                logger.debug(f"Progress for platform: '{platform}' deactivated")
                 continue
             coro_task = asyncio.create_task(manager.process_all_tasks())
-            self.current_tasks.append(coro_task)
+            self.current_tasks.append((manager.platform_name, coro_task))
         # Execute all platform tasks concurrently
-        await asyncio.gather(*self.current_tasks)
+        res = await asyncio.gather(*[t for platform, t in self.current_tasks])
+        # convert to result
+        result = defaultdict[str, list]()
+        for platform_res, exec_task in zip(res,self.current_tasks):
+            for col_res in platform_res:
+                result[exec_task[0]] = col_res.task.task_name
+        self.current_tasks.clear()
+        return result
 
     def check_new_client_tasks(self, task_dir: Optional[Path] = None) -> list[str]:
         """
@@ -123,10 +134,10 @@ class PlatformOrchestrator:
             # create collection_task models
             added_tasks.extend(self.handle_task_file(file))
         return added_tasks
-    
+
     def handle_task_file(self, file: Path) -> list[str]:
-        tasks, task_group = load_tasks(file)
-        added_tasks, all_added = self.process_tasks(tasks, task_group)
+        tasks = load_tasks_file(file)
+        added_tasks, all_added = self.add_tasks(tasks)
 
         if all_added and BIG5_CONFIG.moved_processed_tasks:
             file.rename(PROCESSED_TASKS_PATH / file.name)
@@ -135,9 +146,8 @@ class PlatformOrchestrator:
         logger.debug(f"new tasks: # {[t for t in added_tasks]}")
         return added_tasks
 
-    def process_tasks(self,
-                      tasks: list[ClientTaskConfig],
-                      task_group: Optional[ClientTaskGroupConfig] = None) -> tuple[list[str], bool]:
+    def add_tasks(self,
+                  tasks: list[ClientTaskConfig]) -> tuple[list[str], bool]:
         """
 
         @return: list of task names and if all tasks were added
@@ -149,6 +159,7 @@ class PlatformOrchestrator:
         grouped_by_platform = defaultdict(list)
 
         for task in tasks:
+            # print(task, missing_platform_managers)
             if task.platform in missing_platform_managers:
                 all_added = False
                 continue
@@ -162,16 +173,18 @@ class PlatformOrchestrator:
 
         for group, g_tasks in grouped_by_platform.items():
             manager = self.platform_managers[group]
+            if not manager.active:
+                self.logger.warning(f"Tasks added to platform {group} is currently not set 'active'")
             added_tasks_names = manager.add_tasks(g_tasks)
             added_tasks.extend(added_tasks_names)
             if len(g_tasks) != len(added_tasks_names):
-                logger.warning(f"Not all tasks added for platform: {task.platform}, {len(added_tasks_names)}/{len(g_tasks)}")
-                # Register platform database in main DB
-                #self.add_platform_db(task.platform, manager.platform_db.db_config.connection_str)
+                logger.warning(
+                    f"Not all tasks added for platform: {task.platform}, {len(added_tasks_names)}/{len(g_tasks)}")
+                # Register the platform database in main DB
+                # self.add_platform_db(task.platform, manager.platform_db.db_config.connection_str)
                 all_added = False
 
         return added_tasks, all_added
-
 
     def fix_tasks(self):
         """
@@ -186,10 +199,28 @@ class PlatformOrchestrator:
             # self.platform_managers.items()
             # task.platform
 
-    def get_status(self) -> dict[str, str]:
-        return {p_n: platform.status.name for p_n, platform in self.platform_managers.items()}
+    def get_status(self) -> dict[str, dict[str, str | bool]]:
+        return {p_n: {"currently running": platform.status.name,
+                      "active": platform.active} for p_n, platform in self.platform_managers.items()}
+
+    async def run_collect_loop(self):
+        try:
+            while True:
+                self.check_new_client_tasks()
+                self.fix_tasks()
+                # Progress all tasks
+                res = await self.progress_tasks(None)
+                self.logger.info(res)
+                await asyncio.sleep(5)
+        except KeyboardInterrupt:
+            asyncio.run(self.abort_tasks())
+            print("bye bye")
+        except Exception as e:
+            get_logger(__name__).error(f"Error in main program flow: {str(e)}")
+            raise
 
 T = TypeVar('T', bound=PlatformManager)
+
 
 def get_client_class(platform: str) -> Optional[Type[ConcreteClientClass]]:
     match platform:
@@ -217,6 +248,7 @@ def get_client_class(platform: str) -> Optional[Type[ConcreteClientClass]]:
         case _:
             print(f"Platform '{platform}' not supported")
             return None
+
 
 
 def get_platform_manager(platform: str, client_config: ClientConfig) -> Optional[PlatformManager]:

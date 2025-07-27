@@ -5,9 +5,8 @@ from typing import Optional
 
 import itertools
 from pydantic_core._pydantic_core import ValidationError
-
 from big5_databases.databases.external import ClientTaskConfig
-from src.clients.clients_models import TimeConfig, ClientTaskGroupConfig
+from src.clients.clients_models import TimeConfig, ClientTaskGroupConfig, all_task_schemas
 from src.const import CLIENTS_TASKS_PATH
 from tools.files import read_data, get_abs_path
 
@@ -70,7 +69,8 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[ClientTaskGroupConf
             else:
                 conf['from_time'] = timestamp.isoformat()
             conf['to_time'] = (timestamp + interval).isoformat()
-            conf["test_data"] = config.test_data
+            if config.test_data:
+                conf["test_data"] = config.test_data
 
             concrete_config = {
                 "task_name": f"{config.group_prefix}_{task_no}",
@@ -91,13 +91,13 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[ClientTaskGroupConf
         for platform in config.platform[1:]:
             # iterate through the first set of configs and add copies with this platform to the list
             for ct_idx in range(task_no):
-                new_ct = concrete_configs[ct_idx].model_copy(update={"platform": platform},deep=True)
+                new_ct = concrete_configs[ct_idx].model_copy(update={"platform": platform}, deep=True)
                 concrete_configs.append(new_ct)
 
     return config, concrete_configs
 
 
-def load_tasks(task_path: Path) -> tuple[list[ClientTaskConfig], Optional[ClientTaskGroupConfig]]:
+def load_tasks_file(task_path: Path) -> list[ClientTaskConfig]:
     """
     Load a validate a task file
     :param task_path: absolute or relative path (to CLIENTS_TASKS_PATH)
@@ -105,31 +105,28 @@ def load_tasks(task_path: Path) -> tuple[list[ClientTaskConfig], Optional[Client
     """
     abs_task_path = get_abs_path(task_path, CLIENTS_TASKS_PATH)
     data = read_data(abs_task_path)
-    ct_cfg_err = None
+    all_tasks = parse_task_data(data)
+    for t in all_tasks:
+        t.source_file = task_path
+    return all_tasks
 
-    if isinstance(data, list):
-        parsed_tasks = []
-        for task_data in data:
-            task = ClientTaskConfig.model_validate(task_data)
-            task.source_file = task_path
-            parsed_tasks.append(task)
-        return parsed_tasks, None
-    try:
-        task = ClientTaskConfig.model_validate(data)
-        task.source_file = task_path
-        return [task], None
-    except ValidationError as v_err:
-        ct_cfg_err = v_err
+def parse_task_data(data: dict |  list | all_task_schemas) -> list[ClientTaskConfig]:
+    if not isinstance(data, all_task_schemas):
+        task_configs = all_task_schemas.model_validate(data)
+    else:
+        task_configs = data
+    all_tasks = []
+    if not isinstance(task_configs.root, list):
+        task_configs = [task_configs.root]
+    else:
+        task_configs = task_configs.root
 
-    try:
-        ctg = ClientTaskGroupConfig.model_validate(data)
-        task_group_conf, tasks = generate_configs(ctg)
-        for t in tasks:
-            t.source_file = task_path
-        return tasks, task_group_conf
-    except ValidationError as v_err:
-        print(ct_cfg_err)
-        print("****")
-        print(v_err)
-        logger.error("Task file cannot be parsed neither as TaskConfig nor as TaskGroupConfig")
-        return [], None
+    for conf in task_configs:
+        if isinstance(conf, ClientTaskConfig):
+            all_tasks.append(conf)
+
+        if isinstance(conf, ClientTaskGroupConfig):
+            group_conf, group_tasks = generate_configs(conf)
+            all_tasks.extend(group_tasks)
+
+    return all_tasks

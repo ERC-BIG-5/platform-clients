@@ -1,9 +1,9 @@
 import enum
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from asyncio import sleep, CancelledError
 from datetime import datetime
 from random import randint
-from typing import Generic, TypeVar, Optional
+from typing import TypeVar, Optional
 
 import httpx
 
@@ -12,9 +12,7 @@ from big5_databases.databases.external import CollectionStatus, ClientTaskConfig
 from big5_databases.databases.platform_db_mgmt import PlatformDB
 from src.clients.abstract_client import AbstractClient, PostEntry, CollectionException, \
     QuotaExceeded
-from src.clients.clients_models import ClientTaskGroupConfig
 from src.const import BIG5_CONFIG
-from src.misc import platform_quotas
 from src.misc.platform_quotas import store_quota, remove_quota, load_quotas
 from tools.project_logging import get_logger
 
@@ -35,7 +33,8 @@ class PlatformManager:
 
     def __init__(self, platform_name, client_class, client_config: ClientConfig):
         self.platform_name = platform_name
-        self.client = client_class(client_config, self)
+        self.client: AbstractClient = client_class(client_config, self)
+        self.active : bool = True # can be set, with "progress" parameter in platform-config
 
         # Initialize platform database
         client_config.db_config.test_mode = BIG5_CONFIG.test_mode
@@ -64,6 +63,16 @@ class PlatformManager:
                 print(e)
 
     def add_tasks(self, tasks: list[ClientTaskConfig]) -> list[str]:
+        """
+        Adds the serializable collection_config of the specific platform
+        Args:
+            tasks:
+
+        Returns:
+
+        """
+        for task in tasks:
+            task.platform_collection_config = self.client.transform_config_to_serializable(task.collection_config)
         return self.platform_db.add_db_collection_tasks(tasks)
 
     def has_quota_halt(self) -> Optional[datetime]:
@@ -86,44 +95,46 @@ class PlatformManager:
         except httpx.HTTPError as e:
             self.logger.warning(f"send_results failed: {e}")
 
-    async def process_all_tasks(self):
+    async def process_all_tasks(self) -> list[str]:
         """Process all pending tasks"""
         self._setup_client()
-        while True:
-            self.status = PlatformStatus.running
-            self.current_quota_halt = load_quotas().get(self.platform_name)
-            if halt_until := self.has_quota_halt():
-                self.logger.info(
-                    f"Progress for platform: '{self.platform_name}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
-                break
-            tasks = self.platform_db.get_pending_tasks()
-            self.logger.info(f"Task queue: {len(tasks)}")
-            if not tasks:
-                break
-            for idx, task in enumerate(tasks):
-                if (halt_until := self.has_quota_halt()):
-                    print(f"quota halt. not continuing tasks {halt_until:%Y.%m.%d - %H:%M}")
-                    break
-                self.logger.debug(f"Processing task- platform:{task.platform}, id:{task.id}, {idx + 1}/{len(tasks)}")
-                collection_result = await self.process_task(task)
+        processed_tasks = []
+        self.status = PlatformStatus.running
+        self.current_quota_halt = load_quotas().get(self.platform_name)
+        if halt_until := self.has_quota_halt():
+            self.logger.info(
+                f"Progress for platform: '{self.platform_name}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
+            return processed_tasks
+        tasks = self.platform_db.get_pending_tasks()
+        self.logger.debug(f"Task queue [{self.platform_name}]: {len(tasks)}")
+        if not tasks:
+            return processed_tasks
+        for idx, task in enumerate(tasks):
+            if (halt_until := self.has_quota_halt()):
+                print(f"quota halt. not continuing tasks {halt_until:%Y.%m.%d - %H:%M}")
+                return processed_tasks
+            self.logger.debug(f"Processing task- platform:{task.platform}, id:{task.id}, {idx + 1}/{len(tasks)}")
+            collection_result = await self.process_task(task)
+            processed_tasks.append(collection_result)
+            if BIG5_CONFIG.send_posts and isinstance(collection_result, CollectionResult):
+                await self.send_result(collection_result)
 
-                if BIG5_CONFIG.send_posts and isinstance(collection_result, CollectionResult):
-                    await self.send_result(collection_result)
-
-                # if not tasks[-1] == task:
+            if idx == len(tasks) - 1:
                 sleep_time = self.client.config.request_delay
                 sleep_time += randint(0, self.client.config.delay_randomize)
                 try:
                     await sleep(sleep_time)
                 except (KeyboardInterrupt, CancelledError):
                     print("closing...")
-                    break
+                    return processed_tasks
         self.status = PlatformStatus.idle
+        return processed_tasks
 
     async def process_task(self, task: ClientTaskConfig) -> CollectionResult | CollectionException:
         """Execute a single collection task"""
         try:
             self.platform_db.update_task_status(task.id, CollectionStatus.RUNNING)
+            execution_ts = datetime.now()
             # todo...
             if task.test_data:
                 db_posts = []
@@ -137,7 +148,8 @@ class PlatformManager:
                     added_posts=[],
                     task=task,
                     collected_items=len(db_posts),
-                    duration=0  # millis
+                    duration=0,  # millis
+                    execution_ts=execution_ts
                 )
             else:
                 collection = await self.client.execute_task(task)
