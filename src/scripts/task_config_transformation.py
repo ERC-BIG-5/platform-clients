@@ -48,21 +48,35 @@ if __name__ == "__main__":
             except TypeError as err:
                 print(f"{platform}: {err}")
 
-    tasks = parse_task_data({
-        "platform": "tiktok",
-        "group_prefix": "phase_2_1000d_0423",
-        "static_params": {
-            "limit": 1000
+    tasks = parse_task_data([
+        {
+            "platform": "tiktok",
+            "group_prefix": "phase_2_1000d_0523",
+            "static_params": {
+                "limit": 1000
+            },
+            "time_config": {
+                "start": "2023-05-01",
+                "end": "2023-05-02",
+                "interval": {
+                    "days": 1
+                }
+            }
         },
-        "time_config": {
-            "start": "2023-04-01",
-            "end": "2023-05-01",
-            "clamp_to_same_day": True,
-            "truncate_overflow":True,
-            "interval": {
-                "days": 1
+        {
+            "platform": "tiktok",
+            "group_prefix": "phase_2_1000d_0623",
+            "static_params": {
+                "limit": 1000
+            },
+            "time_config": {
+                "start": "2023-06-01",
+                "end": "2023-06-03",
+                "interval": {
+                    "days": 1
+                }
             }
         }
-    })
+    ])
     for task in tasks:
         print(task.collection_config.from_time, task.collection_config.to_time)

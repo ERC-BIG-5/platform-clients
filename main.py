@@ -162,7 +162,7 @@ async def collect(run_forever: bool = True):
 
 if __name__ == '__main__':
     try:
-        Path("/home/rsoleyma/projects/big5/platform_clients/data/dbs/phase2/youtube.sqlite").unlink(missing_ok=True)
+        # Path("/home/rsoleyma/projects/big5/platform_clients/data/dbs/phase2/youtube.sqlite").unlink(missing_ok=True)
         asyncio.run(collect(False))
     except KeyboardInterrupt:
         pass

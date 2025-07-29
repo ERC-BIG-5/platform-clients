@@ -169,3 +169,4 @@ cython_debug/
 /.python-version
 /data/log_conf.json
 /uv.lock
+./.idea/
