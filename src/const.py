@@ -25,7 +25,9 @@ for dir in MAIN_DIRS:
 
 class Big5Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
+    main_loop_sleep_interval: int = Field(10,  alias="MAIN_LOOP_INTERVAL")
     run_config_file_name: str = Field(alias="RUN_CONFIG")
+    continue_paused_tasks: bool = Field(alias="CONTINUE_PAUSED_TASKS", default=False)
     moved_processed_tasks: bool = Field(alias="MOVE_PROCESSED_TASKS", default=True)
     send_posts: bool = Field(alias="SEND_TASK_POSTS", default=True)
     send_post_host: str = Field(alias="SEND_POST_HOST", default="http://localhost")

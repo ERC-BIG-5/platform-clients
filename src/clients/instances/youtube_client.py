@@ -10,7 +10,7 @@ import pyrfc3339
 # import yt_dlp
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from pydantic import SecretStr, BaseModel, Field, field_validator, field_serializer
+from pydantic import SecretStr, BaseModel, Field, field_validator, field_serializer, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from big5_databases.databases.db_models import DBPost, DBUser
@@ -28,11 +28,13 @@ class GoogleAPIKeySetting(BaseSettings):
 
 YT_VID_URL_PRE = "https://www.youtube.com/watch?v="
 
+logger = get_logger(__file__)
+
 
 class YoutubeSearchParameters(BaseModel):
     # Search parameters
     q: Optional[str] = Field(
-        default=None,
+        default="",
         description="Query term to search for",
         alias="query"
     )
@@ -44,8 +46,10 @@ class YoutubeSearchParameters(BaseModel):
     )
 
     @field_validator("part", mode="before")
-    def convert_part_list(cls, value: list[str]):
-        return ",".join(value)
+    def convert_part_list(cls, value: str | list[str]):
+        if isinstance(value, list):
+            return ",".join(value)
+        return value
 
     # "channel","playlist","video"
     type: Optional[Literal["video", "channel", "playlist"]] = Field(
@@ -66,9 +70,11 @@ class YoutubeSearchParameters(BaseModel):
 
     # Result control parameters
     maxResults: Optional[int] = Field(
-        ge=0,
-        le=50,
-        default=50,
+        # this will be handled in the collect.
+        # we still get more with pagination
+        # ge=0,
+        # le=50,
+        # default=50,
         description="Maximum number of items to return"
     )
 
@@ -190,6 +196,13 @@ class YoutubeSearchParameters(BaseModel):
     class Config:
         populate_by_name = True
 
+    @field_validator("q",mode="before")
+    def validate_query(cls, value: Optional[str | dict] = None):
+        if isinstance(value, str):
+            return value
+        else:
+            return ""
+
     @field_validator("location")
     def location_validator(cls, val: Union[str, Sequence[float]]) -> Optional[str]:
         if isinstance(val, str):
@@ -211,32 +224,24 @@ class YoutubeSearchParameters(BaseModel):
     @field_serializer('publishedBefore')
     def serialize_publishedBefore(self, dt: datetime, _info):
         if dt:
-            return dt.isoformat()
+            return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
     @field_serializer('publishedAfter')
     def serialize_publishedAfter(self, dt: datetime, _info):
         if dt:
-            return dt.isoformat()
+            return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    @field_validator("publishedBefore", mode="after")
+    def validate_publishedBefore(cls, dt: datetime, _info):
+        if dt and "publishedAfter" in _info.data and dt <= _info.data["publishedAfter"]:
+            raise ValueError(
+                f"publishedAfter must be greater than publishedBefore. publishedBefore: {dt}, publishedAfter: {_info.data['publishedAfter']}")
+        return dt
 
 
 type TVYoutubeSearchParameters = YoutubeSearchParameters
 PostDict: TypeAlias = dict
 UserDict: TypeAlias = dict
-
-
-# class YoutubePathConfig(BaseModel):
-#     pn: Path
-#     mp3s: Path = Field("mp3s", description="Where downloaded mp3s go")
-#
-#     """
-#     @model_validator(mode="after")
-#     def validate_paths(self, paths: dict[str, Path]):
-#         print(paths)
-#         return paths
-#     """
-#
-#     def get_path(self, v: str) -> Path:
-#         return getattr(self, v)
 
 
 class YoutubeResource(Protocol):
@@ -260,25 +265,27 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
     def __init__(self, config: ClientConfig, manager: PlatformManager):
         super().__init__(config, manager)
         self.client: YoutubeResource = None
-        self.logger = get_logger(__name__)
-        # todo this can go, since the datapipeline is taking care of downloads
-        # self.path_config = YoutubePathConfig(pn=CLIENTS_DATA_PATH / self.)
 
     def setup(self):
         self.settings = GoogleAPIKeySetting()
         self.client = build('youtube', 'v3', developerKey=self.settings.GOOGLE_API_KEYS.get_secret_value())
 
+
+
     @staticmethod
     def transform_config(abstract_config: CollectConfig) -> YoutubeSearchParameters:
         abstract_config.relevanceLanguage = abstract_config.language
-        abstract_config.q = abstract_config.query
-        abstract_config.maxResults = abstract_config.limit
+        if abstract_config.limit:
+            abstract_config.maxResults = abstract_config.limit
         yt_config = YoutubeSearchParameters.model_validate(abstract_config, from_attributes=True)
         return yt_config
 
     @staticmethod
     def transform_config_to_serializable(abstract_config: CollectConfig) -> YoutubeSearchParameters:
-        return YoutubeClient.transform_config(abstract_config)
+        try:
+            return YoutubeClient.transform_config(abstract_config)
+        except ValidationError as err:
+            logger.error(err)
 
     @classmethod
     def static_transform_config(clz, abstract_config: CollectConfig) -> YoutubeSearchParameters:
@@ -287,13 +294,11 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
     async def collect(self, generic_config: CollectConfig) -> list[dict]:
         # ,contentDetails,statistics,status,topicDetails,recordingDetails,localizations",
         config = self.transform_config(generic_config)
-
         search_result_items = []
         pages = 0
 
         # rename in config to limit. we are always using 50 or lower, depending if there is a limit
         part = getattr(config, "part")
-        delattr(config, "part")
         config.part = "id,snippet"
         # todo, this needs testing!
         if "snippet" in part:
@@ -305,7 +310,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
             try:
                 # region-code is automatically set to user locatin (e.g. ES)
                 config.maxResults = min(50, generic_config.limit - len(search_result_items))  # remaining
-                self.logger.debug(config.model_dump_json(exclude_none=True))
+                logger.debug(config.model_dump_json(exclude_none=True))
                 search_response = self.client.search().list(**config.model_dump(exclude_none=True)).execute()
                 pages += 1
                 search_result_items.extend(search_response.get('items', []))
@@ -323,7 +328,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
 
         search_result_items = list(
             more_itertools.unique_everseen(search_result_items, key=lambda i: i["id"]["videoId"]))
-        self.logger.info(f"# uniuue response items: {len(search_result_items)}; num pages: {pages}")
+        logger.info(f"# uniuue response items: {len(search_result_items)}; num pages: {pages}")
         video_ids = [_["id"]["videoId"] for _ in search_result_items]
 
         all_videos_results = []
@@ -334,7 +339,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
                     id=','.join(batch)
                 ).execute()
             except HttpError as err:
-                self.logger.error(f"An HTTP error {err.resp.status} occurred:\n{err.content.decode('utf-8')}")
+                logger.error(f"An HTTP error {err.resp.status} occurred:\n{err.content.decode('utf-8')}")
                 all_videos_results.extend([{} for i in batch])
                 continue
             all_videos_results.extend(videos_response.get('items', []))
@@ -344,7 +349,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         # match search and list responses, if they dont match...
         zipped: list[tuple[dict, dict]] = []
         if len(search_result_items) != len(all_videos_results):
-            self.logger.warning(
+            logger.warning(
                 f"Number of videos returned ({len(search_result_items)}) does not match number of items ({len(all_videos_results)})"
             )
             response_items_map = {si["id"]["videoId"]: si for si in search_result_items}
@@ -365,7 +370,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
             videos.append(v)
 
         sorted(videos, key=lambda i: i.get("snippet")["publishedAt"])
-        self.logger.info(f"Collected {len(videos)} videos.")
+        logger.info(f"Collected {len(videos)} videos.")
         return videos
 
     def collect_sync(self, generic_config: CollectConfig) -> list[dict]:
@@ -377,7 +382,6 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
             platform_id=post['id']['videoId'],
             post_url=f"https://www.youtube.com/v/{post['id']['videoId']}",
             date_created=pyrfc3339.parse(post["snippet"]["publishedAt"]),
-            date_collected=datetime.now(),  # todo not required. db does it
             post_type=PostType.REGULAR,  # todo not required. db has default
             content=post,
             collection_task_id=task.id,

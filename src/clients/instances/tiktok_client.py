@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from json import JSONDecodeError
 from typing import Optional, Literal, Any, TypedDict, TYPE_CHECKING
 
-from pydantic import SecretStr, Field, BaseModel
+from pydantic import SecretStr, Field, BaseModel, model_validator, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from tiktok_research_api_python import TikTokResearchAPI, Criteria, QueryVideoRequest, Query
 
@@ -100,12 +100,16 @@ class QueryModel(BaseModel):
     or_: Optional[list[CriteriaModel]] = Field(default_factory=list, alias="or")
     not_: Optional[list[CriteriaModel]] = Field(default_factory=list, alias="not")
 
-    def to_query(self) -> Query:
-        if not self.and_ and not self.or_ and not self.not_:
-            self.and_.append(CriteriaModel(operation="IN", field_values=["SHORT", "MID", "LONG", "EXTRA_LONG"],
-                                           field_name="video_length"))
+    @model_validator(mode="after")
+    def validate_query(cls, query: "QueryModel"):
+        if not query.and_ and not query.or_ and not query.not_:
+            query.and_.append(CriteriaModel(operation="IN", field_values=["SHORT", "MID", "LONG", "EXTRA_LONG"],
+                                            field_name="video_length"))
             # self.and_.append(CriteriaModel(operation="IN", field_values=EU_COUNTRY_CODES, field_name="region_code"))
-            logger.info(f"Adding default query with all video durations")
+            logger.debug(f"Adding default query with all video durations")
+        return query
+
+    def to_query(self) -> Query:
         return Query(
             and_criteria=[criteria.to_criteria() for criteria in self.and_],
             or_criteria=[criteria.to_criteria() for criteria in self.or_],
@@ -222,14 +226,18 @@ class TikTokClient(AbstractClient[QueryVideoRequestModel, QueryVideoResult, User
 
     @staticmethod
     def transform_config_to_serializable(abstract_config: CollectConfig) -> QueryVideoRequestModel:
-        gen_conf = TikTokClient.base_config_transform(abstract_config)
-        return QueryVideoRequestModel(start_date=gen_conf.from_time,
-                                      query=gen_conf.query,
-                                      end_date=gen_conf.to_time,
-                                      is_random=gen_conf.is_random,
-                                      fields=gen_conf.fields,
-                                      max_count=min(100, abstract_config.limit),
-                                      max_total=abstract_config.limit)
+        try:
+            gen_conf = TikTokClient.base_config_transform(abstract_config)
+            return QueryVideoRequestModel(start_date=gen_conf.from_time,
+                                          query=gen_conf.query,
+                                          end_date=gen_conf.to_time,
+                                          is_random=gen_conf.is_random,
+                                          fields=gen_conf.fields,
+                                          max_count=min(100, abstract_config.limit),
+                                          max_total=abstract_config.limit)
+        except ValidationError as exc:
+            logger.error(f"Invalid TikTok collection task: {exc}")
+            raise
 
     async def collect(self, collection_config: CollectConfig) -> list[QueryVideoResult]:
         config: QueryVideoRequest = self.transform_config(collection_config)
@@ -246,12 +254,13 @@ class TikTokClient(AbstractClient[QueryVideoRequestModel, QueryVideoResult, User
                 return []
             except Exception as exc:
                 if str(exc) == "Rate limit reached":
-                    raise QuotaExceeded.next_day(exc)
+                    raise QuotaExceeded.twenty_four_hours(exc)
                 print(exc)
                 raise CollectionException(orig_exception=exc)
             logger.debug([f"{datetime.fromtimestamp(v["create_time"]).date():%Y-%m-%d}" for v in videos])
             all_videos.extend([
                 self.raw_post_data_conversion(v) for v in videos])
+            logger.debug(len(all_videos))
             if len(all_videos) >= config.max_total:
                 break
 

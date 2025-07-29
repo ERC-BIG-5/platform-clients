@@ -1,4 +1,3 @@
-
 from typing import Optional, Any
 
 from pydantic import BaseModel, Field, RootModel
@@ -18,6 +17,9 @@ class TimeConfig(BaseModel):
     end: str  # ISO format timestamp
     interval: dict[str, int]  # maps directly to timedelta kwargs
     timespan: Optional[dict[str, int]] = None  # instead of duration with the same as the interval use end_i - timespan
+    clamp_to_same_day: bool = False
+    truncate_overflow: bool = Field(False,
+                                    description="does not include the 'last' timespan, if the 'ts' + 'interval' > end. Works very well with 'clamp_to_same_day' to cover a whole month 01-01 - 02-01 gets all days of february")
 
 
 class ClientTaskGroupConfig(BaseModel):
@@ -30,25 +32,12 @@ class ClientTaskGroupConfig(BaseModel):
     # store_as_group: bool = False
     id: Optional[int] = Field(None, init=False)
     transient: Optional[bool] = False
-    # database: Optional[str] = Field("")  # default the same as platform # todo depr...
+    force_new_index: Optional[bool] = Field(False,
+                                            description="When starting indices from 0, does not work, we look for next free indices")
 
     test: bool = False
     overwrite: bool = False
     test_data: Optional[list[dict]] = None
-
-    # todo. why is this not called?!
-    # @field_validator("database", mode="before")
-    # @classmethod
-    # def set_database(cls, v, info: ValidationInfo) -> str:
-    #     if v is None:
-    #         return info.data["platform"]
-    #     return v
-
-    # @model_validator(mode="after")
-    # def validate_model(cls, model: "ClientTaskGroupConfig"):
-    #     if not model.database:
-    #         model.database = model.platform
-    #     return model
 
 
 class BaseEnvSettings(BaseSettings):

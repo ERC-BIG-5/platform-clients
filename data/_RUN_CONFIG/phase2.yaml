@@ -1,0 +1,20 @@
+clients:
+  youtube:
+    progress: true
+    request_delay: 2
+    db_config:
+      create: true
+      db_connection:
+        db_path: "phase2/youtube.sqlite"
+  tiktok:
+    progress: true
+    request_delay: 0
+    db_config:
+      db_connection:
+        db_path: "phase2/tiktok.sqlite"
+  twitter:
+    progress: false
+    request_delay: 10
+    db_config:
+      db_connection:
+        db_path: "phase2/twitter.sqlite"

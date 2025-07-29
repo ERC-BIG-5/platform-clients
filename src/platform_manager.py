@@ -2,6 +2,7 @@ import enum
 from abc import abstractmethod
 from asyncio import sleep, CancelledError
 from datetime import datetime
+from pydantic import ValidationError
 from random import randint
 from typing import TypeVar, Optional
 
@@ -71,8 +72,15 @@ class PlatformManager:
         Returns:
 
         """
+
         for task in tasks:
-            task.platform_collection_config = self.client.transform_config_to_serializable(task.collection_config)
+            try:
+                task.platform_collection_config = self.client.transform_config_to_serializable(task.collection_config)
+            except ValidationError as err:
+                self.logger.error(f"collection-task: {task.task_name} has invalid config: {err}")
+                task.status = CollectionStatus.INVALID_CONF
+                continue
+
         return self.platform_db.add_db_collection_tasks(tasks)
 
     def has_quota_halt(self) -> Optional[datetime]:
@@ -105,7 +113,7 @@ class PlatformManager:
             self.logger.info(
                 f"Progress for platform: '{self.platform_name}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
             return processed_tasks
-        tasks = self.platform_db.get_pending_tasks()
+        tasks = self.platform_db.get_pending_tasks(BIG5_CONFIG.continue_paused_tasks)
         self.logger.debug(f"Task queue [{self.platform_name}]: {len(tasks)}")
         if not tasks:
             return processed_tasks
@@ -119,7 +127,7 @@ class PlatformManager:
             if BIG5_CONFIG.send_posts and isinstance(collection_result, CollectionResult):
                 await self.send_result(collection_result)
 
-            if idx == len(tasks) - 1:
+            if idx != len(tasks) - 1:
                 sleep_time = self.client.config.request_delay
                 sleep_time += randint(0, self.client.config.delay_randomize)
                 try:
@@ -156,14 +164,13 @@ class PlatformManager:
 
             if isinstance(collection, CollectionResult):
                 # could also be an exception...
-                # test_export = json.dumps([p.content for p in collection.posts])
                 self.platform_db.insert_posts(collection)
             else:
                 print("handling exception")
                 if isinstance(collection, QuotaExceeded):
                     print("Quota exceeded")
                     self.current_quota_halt = collection.blocked_until
-                    self.platform_db.update_task_status(task.id, CollectionStatus.PAUSED)
+                    self.platform_db.update_task_status(task.id, CollectionStatus.INIT)
                     store_quota(self.platform_name, self.current_quota_halt)
             return collection
 
@@ -171,8 +178,8 @@ class PlatformManager:
             self.platform_db.update_task_status(task.id, CollectionStatus.ABORTED)
             raise e
 
-    def pause_running_tasks(self):
-        self.platform_db.pause_running_tasks()
+    def reset_running_tasks(self):
+        self.platform_db.reset_running_tasks()
 
 
     @staticmethod

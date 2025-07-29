@@ -1,14 +1,14 @@
 import asyncio
 import json
+import typer
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional, Any
-
-import typer
 from rich import print
 from rich.console import Console
 from rich.table import Table
+from tools.env_root import root
+from typing import Annotated, Optional, Any
 
 from big5_databases.databases.c_db_merge import merge_database
 from big5_databases.databases.db_merge import DBMerger
@@ -17,12 +17,9 @@ from big5_databases.databases.db_stats import generate_db_stats
 from big5_databases.databases.db_utils import reset_task_states
 from big5_databases.databases.external import CollectionStatus, DBConfig, SQliteConnection, DBStats
 from big5_databases.databases.meta_database import add_db, MetaDatabase
-from src.clients.task_parser import parse_task_data
 from src.const import BASE_DATA_PATH
 from src.platform_orchestration import PlatformOrchestrator
 from src.status import general_databases_status
-from tools.env_root import root
-from tools.project_logging import get_logger
 
 app = typer.Typer(name="Platform-Collection commands",
                   short_help="Information and process commands for platform collection")
@@ -156,22 +153,19 @@ def init_meta_database():
 
 @app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
 async def collect(run_forever: bool = True):
-    orchestrator = None
-    try:
-        orchestrator = PlatformOrchestrator()
+    orchestrator = PlatformOrchestrator()
+    if run_forever:
         await orchestrator.run_collect_loop()
-    except KeyboardInterrupt:
-        if orchestrator:
-            asyncio.run(orchestrator.abort_tasks())
-        print("bye bye")
-    except Exception as e:
-        get_logger(__name__).error(f"Error in main program flow: {str(e)}")
-        raise
+    else:
+        await orchestrator.collect()
 
 
 if __name__ == '__main__':
-    asyncio.run(collect())
-    pass
+    try:
+        Path("/home/rsoleyma/projects/big5/platform_clients/data/dbs/phase2/youtube.sqlite").unlink(missing_ok=True)
+        asyncio.run(collect(False))
+    except KeyboardInterrupt:
+        pass
     # database_names()
     # asyncio.run(collect(run_forever=True))
 

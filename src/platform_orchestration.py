@@ -1,3 +1,5 @@
+import sys
+
 import asyncio
 from asyncio import Task
 from collections import defaultdict
@@ -79,9 +81,13 @@ class PlatformOrchestrator:
             # Initialize platform manager
 
             platform_manager = get_platform_manager(platform, client_config)
-            platform_manager.active = self.run_config.clients[platform].progress
+
             if platform_manager:
                 self.platform_managers[platform] = platform_manager
+                platform_manager.active = self.run_config.clients[platform].progress
+            else:
+                logger.info(f"Cannot initialize platform {platform}")
+                continue
             logger.debug(f"Initialized manager for platform: {platform}; active: {platform_manager.active}")
 
     def add_platform_db(self, platform: str, db_config: DBConfig):
@@ -109,12 +115,12 @@ class PlatformOrchestrator:
         # Execute all platform tasks concurrently
         res = await asyncio.gather(*[t for platform, t in self.current_tasks])
         # convert to result
-        result = defaultdict[str, list]()
-        for platform_res, exec_task in zip(res,self.current_tasks):
+        result = defaultdict(list)
+        for platform_res, exec_task in zip(res, self.current_tasks):
             for col_res in platform_res:
-                result[exec_task[0]] = col_res.task.task_name
+                result[exec_task[0]].append(col_res.task.task_name)
         self.current_tasks.clear()
-        return result
+        return dict(result)
 
     def check_new_client_tasks(self, task_dir: Optional[Path] = None) -> list[str]:
         """
@@ -179,7 +185,7 @@ class PlatformOrchestrator:
             added_tasks.extend(added_tasks_names)
             if len(g_tasks) != len(added_tasks_names):
                 logger.warning(
-                    f"Not all tasks added for platform: {task.platform}, {len(added_tasks_names)}/{len(g_tasks)}")
+                    f"Not all tasks added for platform: {group}, {len(added_tasks_names)}/{len(g_tasks)}")
                 # Register the platform database in main DB
                 # self.add_platform_db(task.platform, manager.platform_db.db_config.connection_str)
                 all_added = False
@@ -191,11 +197,11 @@ class PlatformOrchestrator:
         set the tasks of status "RUNNING" to "PAUSED"
         """
         for platform, platform_mgmt in self.platform_managers.items():
-            platform_mgmt.pause_running_tasks()
+            platform_mgmt.reset_running_tasks()
 
     async def abort_tasks(self):
         for task_coro in self.current_tasks:
-            task_coro.cancel()
+            task_coro[1].cancel()
             # self.platform_managers.items()
             # task.platform
 
@@ -203,21 +209,34 @@ class PlatformOrchestrator:
         return {p_n: {"currently running": platform.status.name,
                       "active": platform.active} for p_n, platform in self.platform_managers.items()}
 
-    async def run_collect_loop(self):
+    async def collect(self):
         try:
-            while True:
-                self.check_new_client_tasks()
-                self.fix_tasks()
-                # Progress all tasks
-                res = await self.progress_tasks(None)
-                self.logger.info(res)
-                await asyncio.sleep(5)
+            self.check_new_client_tasks()
+            self.fix_tasks()
+            # Progress all tasks
+            res = await self.progress_tasks()
+            self.logger.info(res)
         except KeyboardInterrupt:
             asyncio.run(self.abort_tasks())
             print("bye bye")
+            sys.exit(0)
         except Exception as e:
             get_logger(__name__).error(f"Error in main program flow: {str(e)}")
             raise
+
+    async def run_collect_loop(self):
+        try:
+            while True:
+                await self.collect()
+                await asyncio.sleep(BIG5_CONFIG.main_loop_sleep_interval)
+        except KeyboardInterrupt:
+            asyncio.run(self.abort_tasks())
+            print("bye bye")
+            sys.exit(0)
+        except Exception as e:
+            get_logger(__name__).error(f"Error in main program flow: {str(e)}")
+            raise
+
 
 T = TypeVar('T', bound=PlatformManager)
 
@@ -248,7 +267,6 @@ def get_client_class(platform: str) -> Optional[Type[ConcreteClientClass]]:
         case _:
             print(f"Platform '{platform}' not supported")
             return None
-
 
 
 def get_platform_manager(platform: str, client_config: ClientConfig) -> Optional[PlatformManager]:

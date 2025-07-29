@@ -1,14 +1,12 @@
+import itertools
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from tools.files import read_data, get_abs_path
 
-import itertools
-from pydantic_core._pydantic_core import ValidationError
 from big5_databases.databases.external import ClientTaskConfig
 from src.clients.clients_models import TimeConfig, ClientTaskGroupConfig, all_task_schemas
 from src.const import CLIENTS_TASKS_PATH
-from tools.files import read_data, get_abs_path
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +20,9 @@ def generate_timestamps(time_config: TimeConfig) -> list[datetime]:
 
     timestamps = []
     current = start
-    while current <= end:
+    while current < end or (not time_config.truncate_overflow and current <= end):
         timestamps.append(current)
         current += interval
-
     return timestamps
 
 
@@ -68,7 +65,10 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[ClientTaskGroupConf
                 conf['from_time'] = (timestamp + interval - timespan_).isoformat()
             else:
                 conf['from_time'] = timestamp.isoformat()
-            conf['to_time'] = (timestamp + interval).isoformat()
+            if config.time_config.clamp_to_same_day and interval.days >= 1:
+                conf["to_time"] = conf["from_time"]
+            else:
+                conf['to_time'] = (timestamp + interval).isoformat()
             if config.test_data:
                 conf["test_data"] = config.test_data
 
@@ -80,7 +80,8 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[ClientTaskGroupConf
                 "transient": config.transient,
                 "test": config.test,
                 "overwrite": config.overwrite,
-
+                "group_prefix": config.group_prefix,
+                "force_new_index": config.force_new_index
             }
             concrete_configs.append(ClientTaskConfig.model_validate(concrete_config))
             task_no += 1
@@ -110,7 +111,8 @@ def load_tasks_file(task_path: Path) -> list[ClientTaskConfig]:
         t.source_file = task_path
     return all_tasks
 
-def parse_task_data(data: dict |  list | all_task_schemas) -> list[ClientTaskConfig]:
+
+def parse_task_data(data: dict | list | all_task_schemas) -> list[ClientTaskConfig]:
     if not isinstance(data, all_task_schemas):
         task_configs = all_task_schemas.model_validate(data)
     else:

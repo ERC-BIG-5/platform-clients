@@ -32,7 +32,7 @@ class TwitterSearchParameters(BaseModel):
     filter_quotes: bool = True
     from_time: Optional[SerializableDatetimeAlways] = None
     to_time: Optional[SerializableDatetimeAlways] = None
-    limit: int = 100
+    limit: Optional[int] = 100
     geocode: Optional[str] = None
 
     def build_query(self) -> str:
