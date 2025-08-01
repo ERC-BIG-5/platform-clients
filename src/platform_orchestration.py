@@ -135,7 +135,9 @@ class PlatformOrchestrator:
             self.task.fix_tasks()
             # Progress all tasks
             res = await self.progress_tasks()
-            self.logger.info(res)
+            # todo, cna go into progress_tasks
+            self.logger.info({p: len(t) for p, t in res.items()})
+            self.logger.debug(res)
         except KeyboardInterrupt:
             asyncio.run(self.abort_tasks())
             print("bye bye")

@@ -76,7 +76,6 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[ClientTaskGroupConf
                 "task_name": f"{config.group_prefix}_{task_no}",
                 "collection_config": conf,
                 "platform": base_platform,
-                # "database": config.database,
                 "transient": config.transient,
                 "test": config.test,
                 "overwrite": config.overwrite,

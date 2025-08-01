@@ -62,3 +62,8 @@ Collection task files can come in 3 formats:
 from big5_databases.databases.external import ClientTaskConfig
 ClientTaskConfig.model_json_schema()
 ```
+
+## Upgradeing big5 dependencies:
+
+`uv add --upgrade git+https://github.com/ERC-BIG-5/databases`
+

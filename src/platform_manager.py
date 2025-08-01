@@ -19,9 +19,11 @@ from tools.project_logging import get_logger
 
 T_Client = TypeVar('T_Client', bound=AbstractClient)
 
+
 class PlatformStatus(enum.Enum):
     idle = enum.auto()
     running = enum.auto()
+
 
 class PlatformManager:
     """
@@ -35,7 +37,7 @@ class PlatformManager:
     def __init__(self, platform_name, client_class, client_config: ClientConfig):
         self.platform_name = platform_name
         self.client: AbstractClient = client_class(client_config, self)
-        self.active : bool = True # can be set, with "progress" parameter in platform-config
+        self.active: bool = True  # can be set, with "progress" parameter in platform-config
 
         # Initialize platform database
         client_config.db_config.test_mode = BIG5_CONFIG.test_mode
@@ -103,10 +105,10 @@ class PlatformManager:
         except httpx.HTTPError as e:
             self.logger.warning(f"send_results failed: {e}")
 
-    async def process_all_tasks(self) -> list[str]:
+    async def process_all_tasks(self) -> list[CollectionResult]:
         """Process all pending tasks"""
         self._setup_client()
-        processed_tasks = []
+        processed_tasks: list[CollectionResult] = []
         self.status = PlatformStatus.running
         self.current_quota_halt = load_quotas().get(self.platform_name)
         if halt_until := self.has_quota_halt():
@@ -114,22 +116,24 @@ class PlatformManager:
                 f"Progress for platform: '{self.platform_name}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
             return processed_tasks
         tasks = self.platform_db.get_pending_tasks(BIG5_CONFIG.continue_paused_tasks)
-        self.logger.debug(f"Task queue [{self.platform_name}]: {len(tasks)}")
+        self.logger.info(f"Continue task queue [{self.platform_name}]: {len(tasks)}")
         if not tasks:
             return processed_tasks
         for idx, task in enumerate(tasks):
-            if (halt_until := self.has_quota_halt()):
-                print(f"quota halt. not continuing tasks {halt_until:%Y.%m.%d - %H:%M}")
+            if halt_until := self.has_quota_halt():
+                self.logger.info(f"quota halt. not continuing tasks {halt_until:%Y.%m.%d - %H:%M}")
                 return processed_tasks
             self.logger.debug(f"Processing task- platform:{task.platform}, id:{task.id}, {idx + 1}/{len(tasks)}")
             collection_result = await self.process_task(task)
-            processed_tasks.append(collection_result)
-            if BIG5_CONFIG.send_posts and isinstance(collection_result, CollectionResult):
-                await self.send_result(collection_result)
+
+            if isinstance(collection_result, CollectionResult):
+                processed_tasks.append(collection_result)
+                if BIG5_CONFIG.send_posts:
+                    await self.send_result(collection_result)
+            #  else, CollectionException are not returned
 
             if idx != len(tasks) - 1:
-                sleep_time = self.client.config.request_delay
-                sleep_time += randint(0, self.client.config.delay_randomize)
+                sleep_time = self.client.config.request_delay + randint(0, self.client.config.delay_randomize)
                 try:
                     await sleep(sleep_time)
                 except (KeyboardInterrupt, CancelledError):
@@ -180,7 +184,6 @@ class PlatformManager:
 
     def reset_running_tasks(self):
         self.platform_db.reset_running_tasks()
-
 
     @staticmethod
     def platform_tables() -> list[str]:

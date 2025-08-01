@@ -1,29 +1,26 @@
 import asyncio
-import warnings
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional, Literal, Sequence, Union, Protocol, TYPE_CHECKING, TypeAlias
-
 import itertools
 import more_itertools
 import pyrfc3339
+from datetime import datetime, timedelta
 # import yt_dlp
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from pydantic import SecretStr, BaseModel, Field, field_validator, field_serializer, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from tools.project_logging import get_logger
+from typing import Optional, Literal, Sequence, Union, Protocol, TypeAlias
 
 from big5_databases.databases.db_models import DBPost, DBUser
-from big5_databases.databases.external import PostType, CollectConfig, ClientTaskConfig, ClientConfig
-from src.clients.abstract_client import AbstractClient, UserEntry, QuotaExceeded
-from src.const import ENV_FILE_PATH, CLIENTS_DATA_PATH
+from big5_databases.databases.external import CollectConfig, ClientTaskConfig, ClientConfig
+from src.clients.abstract_client import AbstractClient, UserEntry, QuotaExceeded, CollectionException
+from src.const import ENV_FILE_PATH
 from src.platform_manager import PlatformManager
-from tools.project_logging import get_logger
 
 
 class GoogleAPIKeySetting(BaseSettings):
     GOOGLE_API_KEYS: SecretStr
-    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
+    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='ignore')
 
 
 YT_VID_URL_PRE = "https://www.youtube.com/watch?v="
@@ -267,6 +264,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         self.client: YoutubeResource = None
 
     def setup(self):
+        # just use the settings/config
         self.settings = GoogleAPIKeySetting()
         self.client = build('youtube', 'v3', developerKey=self.settings.GOOGLE_API_KEYS.get_secret_value())
 
@@ -320,11 +318,12 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
                     break
                 if len(search_result_items) >= generic_config.limit:
                     break
-            except HttpError as e:
-                print(f"An HTTP error {e.resp.status} occurred:\n{e.content.decode('utf-8')}")
-                if e.status_code == 403:
-                    dt = datetime.now() + timedelta(days=1)
-                    raise QuotaExceeded.next_day(e)
+            except HttpError as err:
+                if err.status_code == 403:
+                    raise QuotaExceeded(err, 12)
+                else:
+                    logger.error(f"An HTTP error {err.resp.status} occurred:\n{err.content.decode('utf-8')}")
+                    raise CollectionException(orig_exception=err)
 
         search_result_items = list(
             more_itertools.unique_everseen(search_result_items, key=lambda i: i["id"]["videoId"]))
@@ -339,14 +338,18 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
                     id=','.join(batch)
                 ).execute()
             except HttpError as err:
-                logger.error(f"An HTTP error {err.resp.status} occurred:\n{err.content.decode('utf-8')}")
-                all_videos_results.extend([{} for i in batch])
-                continue
+                if err.resp.status == 403:
+                    logger.info("Quota exceeded.")
+                    raise QuotaExceeded(err, 12)
+                else:
+                    logger.error(f"An HTTP error {err.resp.status} occurred:\n{err.content.decode('utf-8')}")
+                    raise CollectionException(orig_exception=err)
+
             all_videos_results.extend(videos_response.get('items', []))
 
         videos: list[dict] = []
 
-        # match search and list responses, if they dont match...
+        # match search and list responses if they dont match...
         zipped: list[tuple[dict, dict]] = []
         if len(search_result_items) != len(all_videos_results):
             logger.warning(
@@ -382,7 +385,6 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
             platform_id=post['id']['videoId'],
             post_url=f"https://www.youtube.com/v/{post['id']['videoId']}",
             date_created=pyrfc3339.parse(post["snippet"]["publishedAt"]),
-            post_type=PostType.REGULAR,  # todo not required. db has default
             content=post,
             collection_task_id=task.id,
         )

@@ -17,7 +17,7 @@ from big5_databases.databases.db_stats import generate_db_stats
 from big5_databases.databases.db_utils import reset_task_states
 from big5_databases.databases.external import CollectionStatus, DBConfig, SQliteConnection, DBStats
 from big5_databases.databases.meta_database import add_db, MetaDatabase
-from src.const import BASE_DATA_PATH
+from src.const import BASE_DATA_PATH, BIG5_CONFIG
 from src.platform_orchestration import PlatformOrchestrator
 from src.status import general_databases_status
 
@@ -151,19 +151,28 @@ def init_meta_database():
         print(db_file, "does not exist")
 
 
-@app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
-async def collect(run_forever: bool = True):
+async def _collect(run_forever: bool = False):
     orchestrator = PlatformOrchestrator()
     if run_forever:
         await orchestrator.run_collect_loop()
     else:
         await orchestrator.collect()
 
+@app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
+def collect(run_conf: Annotated[Optional[str], typer.Option()] = None, run_forever: bool = False):
+    if run_conf:
+        BIG5_CONFIG.run_config_file_name = run_conf
+    asyncio.run(_collect(run_forever))
+
 
 if __name__ == '__main__':
     try:
+        # status()
+        collect()
+        # collect("phase2_tiktok.yaml")
+        #status()
         # Path("/home/rsoleyma/projects/big5/platform_clients/data/dbs/phase2/youtube.sqlite").unlink(missing_ok=True)
-        asyncio.run(collect(False))
+        #asyncio.run(collect(False))
     except KeyboardInterrupt:
         pass
     # database_names()

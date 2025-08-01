@@ -13,13 +13,13 @@ def fp() -> Path:
     return BASE_DATA_PATH / "platform_quotas.json"
 
 def store(current : dict[str, datetime]) -> None:
-    dump_format = {p: t.timestamp() for p, t in current.items()}
+    dump_format = {p: t.isoformat(timespec='minutes') for p, t in current.items()}
     fp().write_text(json.dumps(dump_format))
 
 def load_quotas() -> dict[str, datetime]:
     if fp().exists():
         json_data = json.load(fp().open())
-        json_data = {k: datetime.fromtimestamp(t) for k, t in json_data.items()}
+        json_data = {k: datetime.fromisoformat(t) for k, t in json_data.items()}
         return json_data
     else:
         return {}

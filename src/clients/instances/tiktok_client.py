@@ -30,7 +30,7 @@ class TikTokPISetting(BaseSettings):
     TIKTOK_CLIENT_KEY: str
     TIKTOK_CLIENT_SECRET: SecretStr
     RATE_LIMIT: int = 3
-    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='allow')
+    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_file_encoding='utf-8', extra='ignore')
 
 
 ALL_COUNTRY_CODES = ['FR', 'TH', 'MM', 'BD', 'IT', 'NP', 'IQ', 'BR', 'US', 'KW', 'VN', 'AR', 'KZ', 'GB', 'UA', 'TR',
@@ -249,12 +249,11 @@ class TikTokClient(AbstractClient[QueryVideoRequestModel, QueryVideoResult, User
                 videos, search_id, cursor, has_more, start_date, end_date, error = self.client.query_videos(config,
                                                                                                             fetch_all_pages=True)
             except JSONDecodeError as exc:
-                print(exc)
-                # todo, stop? mark abort
-                return []
+                logger.error(f"JSONDecodeError: {exc}")
+                raise CollectionException(orig_exception=exc)
             except Exception as exc:
                 if str(exc) == "Rate limit reached":
-                    raise QuotaExceeded.twenty_four_hours(exc)
+                    raise QuotaExceeded(exc,12)
                 print(exc)
                 raise CollectionException(orig_exception=exc)
             logger.debug([f"{datetime.fromtimestamp(v["create_time"]).date():%Y-%m-%d}" for v in videos])
