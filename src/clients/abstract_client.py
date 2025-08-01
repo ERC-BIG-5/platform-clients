@@ -27,21 +27,9 @@ class CollectionException(Exception):
 
 class QuotaExceeded(CollectionException):
 
-    def __init__(self, blocked_until: datetime, orig_exception: Exception) -> None:
+    def __init__(self, orig_exception: Exception, hours: int = 24) -> None:
         super().__init__(orig_exception)
-        self.blocked_until = blocked_until
-
-    @classmethod
-    def next_day(self, orig_exception: Exception) -> "QuotaExceeded":
-        tomorrow = datetime.now() + timedelta(days=1)
-        block_time = datetime(tomorrow.year, tomorrow.month, tomorrow.day)
-        return QuotaExceeded(blocked_until=block_time, orig_exception=orig_exception)
-
-    @classmethod
-    def twenty_four_hours(cls, orig_exception: Exception) -> "QuotaExceeded":
-        tomorrow = datetime.now() + timedelta(hours=24)
-        return QuotaExceeded(blocked_until=tomorrow, orig_exception=orig_exception)
-
+        self.blocked_until = datetime.now() + timedelta(hours=hours)
 
 class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
 
@@ -110,8 +98,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         """
         Make a specific collection (step of a task). This function should use
         the client API
-        :param collect_settings:
-        :param generic_config:
+        :param collection_config:
         :return:
         """
         pass
@@ -126,9 +113,7 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
         """
         return {
             "platform": self.platform_name,
-            "date_collected": datetime.now(),
             "collection_task_id": task.id,
-            # "collection_step": task.steps_done + 1
         }
 
 
