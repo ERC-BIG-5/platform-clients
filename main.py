@@ -20,10 +20,13 @@ from big5_databases.databases.meta_database import add_db, MetaDatabase
 from src.const import BASE_DATA_PATH, BIG5_CONFIG
 from src.platform_orchestration import PlatformOrchestrator
 from src.status import general_databases_status
+from big5_databases.commands import app as db_app
 
 app = typer.Typer(name="Platform-Collection commands",
                   short_help="Information and process commands for platform collection")
 console = Console()
+
+app.add_typer(db_app, name=".db", help="Commands for database management and stats")
 
 
 # cuz Typer does not work with literals
@@ -47,9 +50,8 @@ def database_names():
 
 @app.command(short_help="Get the number of posts, and tasks statuses of all specified databases (RUN_CONFIG)")
 def status(task_status: bool = True,
-           databases: Optional[
-               Annotated[list[Path], typer.Option(help="Use this database instead of the RUN_CONFIG dbs")]] = None):
-    results: list[dict[str, Any]] = general_databases_status(task_status, databases)
+           database: Optional[Path] = None):
+    results: list[dict[str, Any]] = MetaDatabase().general_databases_status(task_status)
     table = Table(*list(results[0].keys()))
     for r in results:
         table.add_row(*r.values())
@@ -158,8 +160,10 @@ async def _collect(run_forever: bool = False):
     else:
         await orchestrator.collect()
 
+
 @app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
-def collect(run_conf: Annotated[Optional[str], typer.Option()] = None, run_forever: bool = False):
+def collect(run_conf: Annotated[Optional[str], typer.Option()] = None,
+            run_forever: bool = False):
     if run_conf:
         BIG5_CONFIG.run_config_file_name = run_conf
     asyncio.run(_collect(run_forever))
@@ -167,44 +171,13 @@ def collect(run_conf: Annotated[Optional[str], typer.Option()] = None, run_forev
 
 if __name__ == '__main__':
     try:
+        status()
         # status()
-        collect()
+        pass
+        # collect("phase2_youtube.yaml")
         # collect("phase2_tiktok.yaml")
-        #status()
+        # status()
         # Path("/home/rsoleyma/projects/big5/platform_clients/data/dbs/phase2/youtube.sqlite").unlink(missing_ok=True)
-        #asyncio.run(collect(False))
+        # asyncio.run(collect(False))
     except KeyboardInterrupt:
         pass
-    # database_names()
-    # asyncio.run(collect(run_forever=True))
-
-    # db_stats(store=False)
-    # status()
-    # status(databases=[Path("exp/youtube-exp.sqlite")])
-    # db_stats()
-
-    # res = parse_task_data({
-    #     "platform": "youtube",
-    #     "group_prefix": "2023_en_all_by_weeks",
-    #     "static_params": {
-    #         "limit": 2000,
-    #         "language": "en",
-    #         "part": [
-    #             "snippet",
-    #             "contentDetails",
-    #             "status",
-    #             "statistics",
-    #             "topicDetails",
-    #             "localizations"
-    #         ]
-    #     },
-    #     "time_config": {
-    #         "start": "2023-01-01T00:00:00Z",
-    #         "end": "2023-01-02T00:00:00Z",
-    #         "interval": {
-    #             "days": 1
-    #         }
-    #     }
-    # })
-    #
-    # print(res)

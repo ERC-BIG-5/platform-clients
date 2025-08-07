@@ -1,6 +1,6 @@
 [project]
 name = "platform-clients"
-version = "0.10.0"
+version = "0.10.1"
 description = "Platform clients package for social media data collection"
 readme = "README.md"
 requires-python = ">=3.12"

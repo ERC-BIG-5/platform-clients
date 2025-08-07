@@ -40,8 +40,6 @@ class Big5Config(BaseSettings):
 
 
 BIG5_CONFIG = Big5Config()
-RUN_CONFIG = read_data(BASE_DATA_PATH / "_RUN_CONFIG" / BIG5_CONFIG.run_config_file_name)
-
 
 def read_run_config() -> dict:
     return read_data(BASE_DATA_PATH / "_RUN_CONFIG" / BIG5_CONFIG.run_config_file_name)

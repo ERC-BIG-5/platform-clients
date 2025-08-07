@@ -1,23 +1,23 @@
-from asyncio import Task
-from collections import defaultdict
-
 import asyncio
-import sys
-from sqlalchemy import exists
-from tools.project_logging import get_logger
-from typing import Type, Optional, TypeVar
+from asyncio import Task
+from pathlib import Path
+from typing import Type, Optional, TypeVar, TypedDict
 
-from big5_databases.databases.db_mgmt import DatabaseManager
-from big5_databases.databases.db_models import DBPlatformDatabase
+import sys
+
+from big5_databases.databases.db_models import CollectionResult
 from big5_databases.databases.external import DBConfig, ClientConfig
-from big5_databases.databases.model_conversion import PlatformDatabaseModel
+from big5_databases.databases.meta_database import MetaDatabase
 from src.clients.abstract_client import ConcreteClientClass
 from src.clients.clients_models import RunConfig
-from src.const import RUN_CONFIG, BIG5_CONFIG, read_run_config, BASE_DATA_PATH
+from src.const import BIG5_CONFIG, read_run_config
 from src.platform_manager import PlatformManager
 from src.task_manager import TaskManager
+from tools.project_logging import get_logger
 
 logger = get_logger(__file__)
+
+platform_results = TypedDict("platform_results", {"task_names": list[str], "num_posts_added": int})
 
 
 class PlatformOrchestrator:
@@ -32,13 +32,13 @@ class PlatformOrchestrator:
             return cls.__instance
         return super().__new__(cls)
 
-    def __init__(self):
+    def __init__(self, meta_db_path: Optional[Path | str] = None):
         # self.logger = get_logger(__file__)
         if not self.__instance:
             self.platform_managers: dict[str, PlatformManager] = {}
             self.run_config = RunConfig.model_validate(read_run_config())
             try:
-                self.main_db = DatabaseManager.sqlite_db_from_path(BASE_DATA_PATH / "dbs/main.sqlite")
+                self.main_db = MetaDatabase() # DatabaseManager.sqlite_db_from_path(BASE_DATA_PATH / "dbs/main.sqlite")
             except ValueError as e:
                 logger.error(e)
                 logger.error("Run command 'init' (typer src/main.py run init)")
@@ -49,24 +49,20 @@ class PlatformOrchestrator:
             self.current_tasks: list[tuple[str, Task]] = []  # platform_name, python async-task
             self.task = TaskManager(self)
 
-    def _get_registered_platforms(self) -> list[PlatformDatabaseModel]:
-        """Get all registered platforms from the main database"""
-        with self.main_db.get_session() as session:
-            return [o.model() for o in session.query(DBPlatformDatabase).all()]
 
     def initialize_platform_managers(self, config: Optional[RunConfig] = None):
         """Initialize managers for specified platforms or all registered platforms"""
         if not config:
             config = self.run_config
 
-        registered_platforms = self._get_registered_platforms()
+        registered_platforms = self.main_db.get_dbs()
 
         for platform in config.clients:
+            # todo, dbs should have a name in the yaml
             if platform not in [p.platform for p in registered_platforms]:
                 self.add_platform_db(platform, config.clients[platform].db_config)
 
-            client_config = ClientConfig.model_validate(
-                RUN_CONFIG["clients"][platform])
+            client_config = config.clients[platform]
 
             client_config.db_config.tables = PlatformManager.platform_tables()
 
@@ -90,14 +86,10 @@ class PlatformOrchestrator:
             logger.debug(f"Initialized manager for platform: {platform}; active: {platform_manager.active}")
 
     def add_platform_db(self, platform: str, db_config: DBConfig):
-        with self.main_db.get_session() as session:
-            if session.query(exists().where(DBPlatformDatabase.platform == platform)).scalar():
-                return
-            session.add(DBPlatformDatabase(platform=platform,
-                                           db_path=db_config.db_connection.db_path.as_posix(), is_default=True))
-            session.commit()
+        self.main_db.add_db(platform, db_config)
 
-    async def progress_tasks(self) -> dict[str, list[str]]:
+
+    async def progress_tasks(self) -> dict[str, platform_results]:
         """
         Progress tasks for specified platforms or all platforms
         returns {<platform_name>: [<task_name>, ...], ...}
@@ -110,12 +102,15 @@ class PlatformOrchestrator:
             coro_task = asyncio.create_task(manager.process_all_tasks())
             self.current_tasks.append((manager.platform_name, coro_task))
         # Execute all platform tasks concurrently
-        res = await asyncio.gather(*[t for platform, t in self.current_tasks])
+        res: list[list[CollectionResult]] = await asyncio.gather(*[t for platform, t in self.current_tasks])
         # convert to result
-        result = defaultdict(list)
+        result: dict[str, platform_results] = {}
         for platform_res, exec_task in zip(res, self.current_tasks):
+            platform_tasks_results: platform_results = {"task_names": [], "num_posts_added": 0}
             for col_res in platform_res:
-                result[exec_task[0]].append(col_res.task.task_name)
+                platform_tasks_results["task_names"].append(col_res.task.task_name)
+                platform_tasks_results["num_posts_added"] += len(col_res.added_posts)
+            result[exec_task[0]] = platform_tasks_results
         self.current_tasks.clear()
         return dict(result)
 
@@ -135,8 +130,8 @@ class PlatformOrchestrator:
             self.task.fix_tasks()
             # Progress all tasks
             res = await self.progress_tasks()
-            # todo, cna go into progress_tasks
-            self.logger.info({p: len(t) for p, t in res.items()})
+            # todo, can go into progress_tasks
+            self.logger.info({p: t for p, t in res.items()})
             self.logger.debug(res)
         except KeyboardInterrupt:
             asyncio.run(self.abort_tasks())

@@ -74,7 +74,6 @@ class PlatformManager:
         Returns:
 
         """
-
         for task in tasks:
             try:
                 task.platform_collection_config = self.client.transform_config_to_serializable(task.collection_config)
@@ -95,6 +94,7 @@ class PlatformManager:
             else:  # remove quota halt
                 self.current_quota_halt = None
                 remove_quota(self.platform_name)
+        return None
 
     async def send_result(self, result: CollectionResult):
         try:
@@ -105,24 +105,35 @@ class PlatformManager:
         except httpx.HTTPError as e:
             self.logger.warning(f"send_results failed: {e}")
 
-    async def process_all_tasks(self) -> list[CollectionResult]:
-        """Process all pending tasks"""
-        self._setup_client()
-        processed_tasks: list[CollectionResult] = []
-        self.status = PlatformStatus.running
+    def check_initial_quota_halt(self) -> bool:
+        """
+
+        Returns: True if halt
+
+        """
         self.current_quota_halt = load_quotas().get(self.platform_name)
+        if self.client.config.ignore_initial_quota_halt:
+            self.current_quota_halt = None
         if halt_until := self.has_quota_halt():
             self.logger.info(
                 f"Progress for platform: '{self.platform_name}' deactivated due to quota halt, {halt_until:%Y.%m.%d - %H:%M}")
-            return processed_tasks
+            return True
+        return False
+
+    async def process_all_tasks(self) -> list[CollectionResult]:
+        """Process all pending tasks"""
+        if self.check_initial_quota_halt():
+            return []
+        self._setup_client()
+        self.status = PlatformStatus.running
+
         tasks = self.platform_db.get_pending_tasks(BIG5_CONFIG.continue_paused_tasks)
         self.logger.info(f"Continue task queue [{self.platform_name}]: {len(tasks)}")
         if not tasks:
-            return processed_tasks
+            return []
+
+        processed_tasks: list[CollectionResult] = []
         for idx, task in enumerate(tasks):
-            if halt_until := self.has_quota_halt():
-                self.logger.info(f"quota halt. not continuing tasks {halt_until:%Y.%m.%d - %H:%M}")
-                return processed_tasks
             self.logger.debug(f"Processing task- platform:{task.platform}, id:{task.id}, {idx + 1}/{len(tasks)}")
             collection_result = await self.process_task(task)
 
@@ -131,6 +142,10 @@ class PlatformManager:
                 if BIG5_CONFIG.send_posts:
                     await self.send_result(collection_result)
             #  else, CollectionException are not returned
+
+            if halt_until := self.has_quota_halt():
+                self.logger.info(f"quota halt. not continuing tasks {halt_until:%Y.%m.%d - %H:%M}")
+                return processed_tasks
 
             if idx != len(tasks) - 1:
                 sleep_time = self.client.config.request_delay + randint(0, self.client.config.delay_randomize)
@@ -169,13 +184,13 @@ class PlatformManager:
             if isinstance(collection, CollectionResult):
                 # could also be an exception...
                 self.platform_db.insert_posts(collection)
-            else:
-                print("handling exception")
-                if isinstance(collection, QuotaExceeded):
-                    print("Quota exceeded")
+            elif isinstance(collection, QuotaExceeded):
+                    self.logger.info(f"Quota exceeded [{self.platform_name}]]")
                     self.current_quota_halt = collection.blocked_until
                     self.platform_db.update_task_status(task.id, CollectionStatus.INIT)
                     store_quota(self.platform_name, self.current_quota_halt)
+            else:
+                raise ValueError(f"Unknown result from task execution: {collection}")
             return collection
 
         except Exception as e:

@@ -1,21 +1,22 @@
 import asyncio
+from datetime import datetime
+from typing import Optional, Literal, Sequence, Union, Protocol, TypeAlias
+
 import itertools
 import more_itertools
 import pyrfc3339
-from datetime import datetime, timedelta
 # import yt_dlp
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from pydantic import SecretStr, BaseModel, Field, field_validator, field_serializer, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from tools.project_logging import get_logger
-from typing import Optional, Literal, Sequence, Union, Protocol, TypeAlias
 
 from big5_databases.databases.db_models import DBPost, DBUser
 from big5_databases.databases.external import CollectConfig, ClientTaskConfig, ClientConfig
 from src.clients.abstract_client import AbstractClient, UserEntry, QuotaExceeded, CollectionException
 from src.const import ENV_FILE_PATH
 from src.platform_manager import PlatformManager
+from tools.project_logging import get_logger
 
 
 class GoogleAPIKeySetting(BaseSettings):
@@ -259,6 +260,8 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
     DEFAULT_PART_OPTIONS = ["contentDetails", "status", "statistics", "topicDetails", "recordingDetails", "suggestions",
                             "localizations"]
 
+    QUOTA_HALT_TIME = 6
+
     def __init__(self, config: ClientConfig, manager: PlatformManager):
         super().__init__(config, manager)
         self.client: YoutubeResource = None
@@ -267,8 +270,6 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         # just use the settings/config
         self.settings = GoogleAPIKeySetting()
         self.client = build('youtube', 'v3', developerKey=self.settings.GOOGLE_API_KEYS.get_secret_value())
-
-
 
     @staticmethod
     def transform_config(abstract_config: CollectConfig) -> YoutubeSearchParameters:
@@ -298,7 +299,6 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         # rename in config to limit. we are always using 50 or lower, depending if there is a limit
         part = getattr(config, "part")
         config.part = "id,snippet"
-        # todo, this needs testing!
         if "snippet" in part:
             parts = part.split(",")
             parts.remove("snippet")
@@ -320,14 +320,14 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
                     break
             except HttpError as err:
                 if err.status_code == 403:
-                    raise QuotaExceeded(err, 12)
+                    raise QuotaExceeded(err, self.QUOTA_HALT_TIME)
                 else:
                     logger.error(f"An HTTP error {err.resp.status} occurred:\n{err.content.decode('utf-8')}")
                     raise CollectionException(orig_exception=err)
 
         search_result_items = list(
             more_itertools.unique_everseen(search_result_items, key=lambda i: i["id"]["videoId"]))
-        logger.info(f"# uniuue response items: {len(search_result_items)}; num pages: {pages}")
+        logger.info(f"# unique response items: {len(search_result_items)}; num pages: {pages}")
         video_ids = [_["id"]["videoId"] for _ in search_result_items]
 
         all_videos_results = []
@@ -340,7 +340,7 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
             except HttpError as err:
                 if err.resp.status == 403:
                     logger.info("Quota exceeded.")
-                    raise QuotaExceeded(err, 12)
+                    raise QuotaExceeded(err, self.QUOTA_HALT_TIME)
                 else:
                     logger.error(f"An HTTP error {err.resp.status} occurred:\n{err.content.decode('utf-8')}")
                     raise CollectionException(orig_exception=err)
@@ -375,9 +375,6 @@ class YoutubeClient(AbstractClient[TVYoutubeSearchParameters, PostDict, UserDict
         sorted(videos, key=lambda i: i.get("snippet")["publishedAt"])
         logger.info(f"Collected {len(videos)} videos.")
         return videos
-
-    def collect_sync(self, generic_config: CollectConfig) -> list[dict]:
-        return asyncio.run(self.collect(generic_config))
 
     def create_post_entry(self, post: dict, task: ClientTaskConfig) -> DBPost:
         return DBPost(
