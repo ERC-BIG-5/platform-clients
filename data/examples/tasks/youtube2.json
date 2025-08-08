@@ -1,0 +1,25 @@
+{
+  "platform": "youtube",
+  "group_prefix": "2024_en_all_by_6_hours_en",
+  "static_params": {
+    "limit": 2000,
+    "relevanceLanguage": "en",
+    "language": "en",
+    "part": [
+      "snippet",
+      "contentDetails",
+      "status",
+      "statistics",
+      "topicDetails",
+      "localizations"
+    ],
+    "videoDuration": "short"
+  },
+  "time_config": {
+    "start": "2024-01-01T00:00:00Z",
+    "end": "2024-12-15T00:00:00Z",
+    "interval": {
+      "hours": 12
+    }
+  }
+}

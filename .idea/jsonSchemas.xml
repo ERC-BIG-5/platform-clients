@@ -3,18 +3,18 @@
   <component name="JsonSchemaMappingsProjectConfiguration">
     <state>
       <map>
-        <entry key="client_collection_config">
+        <entry key="tasks.schema">
           <value>
             <SchemaInfo>
               <option name="generatedName" value="New Schema" />
-              <option name="name" value="client_collection_config" />
-              <option name="relativePathToSchema" value="data/schema/client_config.schema.json" />
-              <option name="schemaVersion" value="JSON Schema version 7" />
+              <option name="name" value="tasks.schema" />
+              <option name="relativePathToSchema" value="data/schema/tasks.schema.json" />
+              <option name="schemaVersion" value="JSON Schema 202,012" />
               <option name="patterns">
                 <list>
                   <Item>
                     <option name="directory" value="true" />
-                    <option name="path" value="data/clients_tasks" />
+                    <option name="path" value="data/tasks" />
                     <option name="mappingKind" value="Directory" />
                   </Item>
                 </list>
