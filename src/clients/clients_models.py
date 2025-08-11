@@ -34,7 +34,7 @@ class ClientTaskGroupConfig(BaseModel):
     transient: Optional[bool] = False
     force_new_index: Optional[bool] = Field(False,
                                             description="When starting indices from 0, does not work, we look for next free indices")
-
+    repeat: Optional[int] = None
     test: bool = False
     overwrite: bool = False
     test_data: Optional[list[dict]] = None

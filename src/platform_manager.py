@@ -185,7 +185,7 @@ class PlatformManager:
                 # could also be an exception...
                 self.platform_db.insert_posts(collection)
             elif isinstance(collection, QuotaExceeded):
-                    self.logger.info(f"Quota exceeded [{self.platform_name}]]")
+                    self.logger.info(f"Quota exceeded [{self.platform_name}]")
                     self.current_quota_halt = collection.blocked_until
                     self.platform_db.update_task_status(task.id, CollectionStatus.INIT)
                     store_quota(self.platform_name, self.current_quota_halt)

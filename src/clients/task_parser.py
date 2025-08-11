@@ -94,6 +94,13 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[ClientTaskGroupConf
                 new_ct = concrete_configs[ct_idx].model_copy(update={"platform": platform}, deep=True)
                 concrete_configs.append(new_ct)
 
+    if len(concrete_configs) == 1 and config.repeat > 1:
+        template_config = concrete_configs[0]
+        concrete_configs = []
+        for i in range(config.repeat):
+            concrete_config = template_config.model_copy(update={"task_name": f"{template_config.group_prefix}_{i}"})
+            concrete_configs.append(concrete_config)
+
     return config, concrete_configs
 
 

@@ -70,9 +70,11 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
     async def execute_task(self, task: ClientTaskConfig) -> CollectionResult | CollectionException:
         start_time = datetime.now()
         try:
+            self.logger.info(f"Executing task: {task.task_name} [{self.platform_name}]")
             collected_items = await self.collect(
                 task.collection_config
             )
+            self.logger.info(f"Collected {len(collected_items)} items for task: {task.task_name} [{self.platform_name}]")
             posts: list[DBPost] = []
             users: set[DBUser] = set()
             # Process results
@@ -89,6 +91,9 @@ class AbstractClient[TClientConfig, PostEntry, UserEntry](ABC):
                 duration=int((datetime.now() - start_time).total_seconds() * 1000),  # millis
                 execution_ts= start_time
             )
+        except KeyboardInterrupt as e:
+            print("print.abstract_client.execute_task: KeyboardInterrupt")
+            raise e
         except CollectionException as e:
             return e
 
