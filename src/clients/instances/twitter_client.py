@@ -1,7 +1,6 @@
 import logging
 import time
 from contextlib import aclosing
-from datetime import datetime
 from typing import Optional, Protocol
 
 import orjson
@@ -170,53 +169,6 @@ class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
             self.logger.error(f"Error collecting tweets: {str(e)}")
             raise
 
-    # async def process_task(self, task: ClientTaskConfig) -> list[DBPost]:
-    #     """
-    #     Execute Twitter collection task with specific handling for:
-    #     - Rate limiting
-    #     - Tweet metadata collection
-    #     - User data collection
-    #     """
-    #     try:
-    #         if self.platform_db:
-    #             self.platform_db.update_task_status(task.id, CollectionStatus.RUNNING)
-    #         start_time = datetime.now()
-    #
-    #         # Execute collection
-    #         collected_items = await self.collect(task.collection_config)
-    #
-    #         # Process results and create entries
-    #         posts: list[DBPost] = []
-    #         users = set()  # Use set to avoid duplicate users
-    #
-    #         for item in collected_items:
-    #             # Create post-entry (tweet)
-    #             post = self.create_post_entry(item, task)
-    #             posts.append(post)
-    #
-    #             # Create user entry
-    #             if 'user_data' in item:
-    #                 user = self.create_user_entry(item['user_data'])
-    #                 users.add(user)
-    #
-    #         # Submit posts and users to database
-    #         if self.platform_db:
-    #             posts = self.platform_db.db_mgmt.safe_submit_posts(posts)
-    #             duration = (datetime.now() - start_time).total_seconds()
-    #             self.platform_db.db_mgmt.update_task(task.id,
-    #                                                  CollectionStatus.DONE,
-    #                                                  len(collected_items),
-    #                                                  len(posts),
-    #                                                  duration)
-    #
-    #         return posts
-    #
-    #     except Exception as e:
-    #         self.logger.error(f"Error executing Twitter task {task.task_name}: {str(e)}")
-    #         if self.platform_db:
-    #             self.platform_db.update_task_status(task.id, CollectionStatus.ABORTED)
-    #         raise e
-
     def create_post_entry(self, post: dict, task: ClientTaskConfig) -> DBPost:
         """Create a database post-entry from a tweet"""
         return DBPost(
@@ -224,7 +176,6 @@ class TwitterClient(AbstractClient[TwitterSearchParameters, dict, dict]):
             platform_id=str(post['id']),
             post_url=f"https://x.com/{post['user']['username']}/status/{post['id']}",
             date_created=post["date"],
-            date_collected=datetime.now(),
             post_type=PostType.REGULAR,
             content=orjson.loads(orjson.dumps(post)),
             collection_task_id=task.id

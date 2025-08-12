@@ -33,6 +33,8 @@ class Big5Config(BaseSettings):
     send_post_host: str = Field(alias="SEND_POST_HOST", default="http://localhost")
     send_post_port: int = Field(alias="SEND_POST_PORT", default=8800)
     send_post_path: str = Field(alias="SEND_POST_PATH", default="")
+    notify_collection_done: bool = Field(alias="NOTIFY_COLLECTION_DONE", default=True)
+    global_data_folder: str = Field(alias="GLOBAL_DATA_FOLDER", default=str(BASE_DATA_PATH))
     # not sure anymore
     db_type: Literal["sqlite"] = Field(alias="DB_TYPE", default="sqlite")
     reset_db: bool = Field(alias="RESET_DB", default=False)

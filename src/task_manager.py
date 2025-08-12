@@ -4,11 +4,14 @@ task related function of the orchestration
 from collections import defaultdict
 
 from pathlib import Path
+
+from tools.files import get_abs_path, read_data
+
 from tools.project_logging import get_model_logger, get_logger
 from typing import TYPE_CHECKING, Optional
 
 from big5_databases.databases.external import ClientTaskConfig
-from src.clients.task_parser import load_tasks_file
+from src.clients.task_parser import parse_task_data
 from src.const import CLIENTS_TASKS_PATH, BIG5_CONFIG, PROCESSED_TASKS_PATH
 
 if TYPE_CHECKING:
@@ -22,11 +25,7 @@ class TaskManager:
         self.orchestration = orchestration
         self.logger = get_model_logger(self)
 
-    def check_new_client_tasks(self, task_dir: Optional[Path] = None) -> list[str]:
-        """
-        check for JSON file in the specific folder and add them into the sdb
-        :return: returns a list of task names
-        """
+    def get_task_files(self, task_dir: Optional[Path] = None) -> list[Path]:
         files = []
         if not task_dir:
             task_dir = CLIENTS_TASKS_PATH
@@ -35,14 +34,36 @@ class TaskManager:
         if task_dir.is_dir():
             files = task_dir.glob("*.json")
 
+        return files
+
+    def check_new_client_tasks(self, task_dir: Optional[Path] = None) -> list[str]:
+        """
+        check for JSON file in the specific folder and add them into the sdb
+        :return: returns a list of task names
+        """
+        files = self.get_task_files(task_dir)
+
         added_tasks = []
         for file in files:
             # create collection_task models
             added_tasks.extend(self.handle_task_file(file))
         return added_tasks
 
+    def load_tasks_file(self, task_path: Path) -> list[ClientTaskConfig]:
+        """
+        Load a validate a task file
+        :param task_path: absolute or relative path (to CLIENTS_TASKS_PATH)
+        :return: task objects, or group (for permanent-storage) and client configs
+        """
+        abs_task_path = get_abs_path(task_path, CLIENTS_TASKS_PATH)
+        data = read_data(abs_task_path)
+        all_tasks = parse_task_data(data)
+        for t in all_tasks:
+            t.source_file = task_path
+        return all_tasks
+
     def handle_task_file(self, file: Path) -> list[str]:
-        tasks = load_tasks_file(file)
+        tasks = self.load_tasks_file(file)
         added_tasks, all_added = self.add_tasks(tasks)
 
         if all_added and BIG5_CONFIG.moved_processed_tasks:

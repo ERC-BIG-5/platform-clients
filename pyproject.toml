@@ -10,6 +10,7 @@ dependencies = [
     "orjson>=3.11.0",
     "pydantic-settings>=2.10.1",
     "sqlalchemy>=2.0.41",
+    "twscrape>=0.17.0",
     "typer>=0.15.2",
 ]
 

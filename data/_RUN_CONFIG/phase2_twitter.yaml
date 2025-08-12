@@ -1,0 +1,8 @@
+clients:
+  twitter:
+    progress: true
+    request_delay: 50
+    delay_randomize: 20
+    db_config:
+      db_connection:
+        db_path: "phase2/twitter.sqlite"

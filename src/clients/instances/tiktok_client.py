@@ -244,24 +244,25 @@ class TikTokClient(AbstractClient[QueryVideoRequestModel, QueryVideoResult, User
         logger.debug(
             f"{(collection_config.from_time, collection_config.to_time)} ->{(config.start_date, config.end_date)}")
         all_videos = []
-        while True:
-            try:
-                videos, search_id, cursor, has_more, start_date, end_date, error = self.client.query_videos(config,
-                                                                                                            fetch_all_pages=True)
-            except JSONDecodeError as exc:
-                logger.error(f"JSONDecodeError: {exc}")
-                raise CollectionException(orig_exception=exc)
-            except Exception as exc:
-                if str(exc) == "Rate limit reached":
-                    raise QuotaExceeded(exc,12)
-                print(exc)
-                raise CollectionException(orig_exception=exc)
-            logger.debug([f"{datetime.fromtimestamp(v["create_time"]).date():%Y-%m-%d}" for v in videos])
-            all_videos.extend([
-                self.raw_post_data_conversion(v) for v in videos])
-            logger.debug(len(all_videos))
-            if len(all_videos) >= config.max_total:
-                break
+        try:
+            videos, search_id, cursor, has_more, start_date, end_date, error = self.client.query_videos(config,
+                                                                                                        fetch_all_pages=True)
+        except KeyboardInterrupt as exc:
+            print("print tiktok client.collect, keyinterrupt")
+        except JSONDecodeError as exc:
+            logger.error(f"JSONDecodeError: {exc}")
+            raise CollectionException(orig_exception=exc)
+        except Exception as exc:
+            if str(exc) == "Rate limit reached":
+                raise QuotaExceeded(exc,12)
+            print(exc)
+            raise CollectionException(orig_exception=exc)
+        logger.debug([f"{datetime.fromtimestamp(v["create_time"]).date():%Y-%m-%d}" for v in videos])
+        all_videos.extend([
+            self.raw_post_data_conversion(v) for v in videos])
+        logger.debug(len(all_videos))
+        #if len(all_videos) >= config.max_total:
+        #    break
 
         return all_videos
 

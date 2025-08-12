@@ -7,6 +7,9 @@ from pathlib import Path
 from rich import print
 from rich.console import Console
 from rich.table import Table
+
+from big5_databases.databases.db_models import DBCollectionTask
+from src.system_notify import send_notify
 from tools.env_root import root
 from typing import Annotated, Optional, Any
 
@@ -19,7 +22,6 @@ from big5_databases.databases.external import CollectionStatus, DBConfig, SQlite
 from big5_databases.databases.meta_database import add_db, MetaDatabase
 from src.const import BASE_DATA_PATH, BIG5_CONFIG
 from src.platform_orchestration import PlatformOrchestrator
-from src.status import general_databases_status
 from big5_databases.commands import app as db_app
 
 app = typer.Typer(name="Platform-Collection commands",
@@ -30,15 +32,10 @@ app.add_typer(db_app, name=".db", help="Commands for database management and sta
 
 
 # cuz Typer does not work with literals
-class TimeWindow_(str, Enum):
+class TimeWindow(str, Enum):
     DAY = "day"
     MONTH = "month"
     YEAR = "year"
-
-
-@app.command()
-def init():
-    MetaDatabase(True)
 
 
 @app.command(short_help="Get the number of posts, and tasks statuses of all specified databases (RUN_CONFIG)")
@@ -65,7 +62,7 @@ def complete_path(current: str):
 @app.command(short_help="Get the stats of a database. monthly or daily count")
 def db_stats(
         db_path: Annotated[Optional[Path], typer.Argument(help="Path to sqlite database")] = None,
-        period: Annotated[TimeWindow_, typer.Option(help="day,month,year")] = TimeWindow_.DAY,
+        period: Annotated[TimeWindow, typer.Option(help="day,month,year")] = TimeWindow.DAY,
         use_last_if_available: bool = typer.Option(True),
         store: bool = True):
     def stats_for(db: DatabaseManager):
@@ -159,7 +156,21 @@ async def _collect(run_forever: bool = False):
         await orchestrator.run_collect_loop()
     else:
         await orchestrator.collect()
+        if BIG5_CONFIG.notify_collection_done:
+            send_notify("collection done")
 
+@app.command(short_help="Read task files from the platform clients")
+def read_task_files(run_conf: Annotated[Optional[str], typer.Option()] = None,
+                    only_evaluate: Annotated[Optional[bool], typer.Argument()] = None):
+    if run_conf:
+        BIG5_CONFIG.run_config_file_name = run_conf
+    orchestrator = PlatformOrchestrator()
+    if only_evaluate:
+        files = orchestrator.task.get_task_files()
+        for file in files:
+            print(orchestrator.task.load_tasks_file(file))
+    else:
+        orchestrator.task.check_new_client_tasks()
 
 @app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
 def collect(run_conf: Annotated[Optional[str], typer.Option()] = None,
@@ -168,14 +179,41 @@ def collect(run_conf: Annotated[Optional[str], typer.Option()] = None,
         BIG5_CONFIG.run_config_file_name = run_conf
     asyncio.run(_collect(run_forever))
 
+@app.command(short_help="Run the main collection (better just run with python- cuz crashes look annoying)")
+def pause_all(db_name: Annotated[Optional[str], typer.Option()] = None):
+    from big5_databases import commands as db_commands
+    db = db_commands.get_db(db_name)
+    print(db.reset_collection_task_states())
+    with db.get_session() as session:
+        tasks = session.query(DBCollectionTask).filter(
+            DBCollectionTask.status == CollectionStatus.INIT
+        ).all()
+
+        for t in tasks:
+            t.status = CollectionStatus.PAUSED
+            session.add(t)
+
+@app.command(short_help="Rsync")
+def copy2server(db_name: Annotated[Optional[str], typer.Option()] = None):
+    from big5_databases import commands as db_commands
+    db = db_commands.get_db(db_name)
+    # db.metadata.db_path
+
+@app.command(short_help="Rsync")
+def copy2server(db_name: Annotated[Optional[str], typer.Option()] = None):
+    pass
 
 if __name__ == '__main__':
     try:
-        status()
+        #status()
+        collect("phase2_twitter.yaml")
+        # read_task_files("phase2_twitter.yaml", True)
         # status()
         pass
         # collect("phase2_youtube.yaml")
-        # collect("phase2_tiktok.yaml")
+        #collect("phase2_tiktok.yaml")
+        # check_for_conflicts("phase-2_tiktok", "phase-2_vm_tiktok")
+        # pause_all("phase-2_tiktok")
         # status()
         # Path("/home/rsoleyma/projects/big5/platform_clients/data/dbs/phase2/youtube.sqlite").unlink(missing_ok=True)
         # asyncio.run(collect(False))

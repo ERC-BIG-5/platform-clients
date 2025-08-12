@@ -94,28 +94,18 @@ def generate_configs(config: ClientTaskGroupConfig) -> tuple[ClientTaskGroupConf
                 new_ct = concrete_configs[ct_idx].model_copy(update={"platform": platform}, deep=True)
                 concrete_configs.append(new_ct)
 
-    if len(concrete_configs) == 1 and config.repeat > 1:
-        template_config = concrete_configs[0]
+    if (config.repeat or 0) > 1:
+        templates  = concrete_configs[:]
         concrete_configs = []
-        for i in range(config.repeat):
-            concrete_config = template_config.model_copy(update={"task_name": f"{template_config.group_prefix}_{i}"})
-            concrete_configs.append(concrete_config)
+        for template in templates:
+            for i in range(config.repeat):
+                concrete_config = template.model_copy(update={"task_name": f"{template.task_name}_{i}"})
+                concrete_configs.append(concrete_config)
 
     return config, concrete_configs
 
 
-def load_tasks_file(task_path: Path) -> list[ClientTaskConfig]:
-    """
-    Load a validate a task file
-    :param task_path: absolute or relative path (to CLIENTS_TASKS_PATH)
-    :return: task objects, or group (for permanent-storage) and client configs
-    """
-    abs_task_path = get_abs_path(task_path, CLIENTS_TASKS_PATH)
-    data = read_data(abs_task_path)
-    all_tasks = parse_task_data(data)
-    for t in all_tasks:
-        t.source_file = task_path
-    return all_tasks
+
 
 
 def parse_task_data(data: dict | list | all_task_schemas) -> list[ClientTaskConfig]:
